@@ -302,9 +302,10 @@ impl App {
             let whole_mac = single.is_none();
             let sys_job = std::thread::spawn(move || sysinfo::gather(whole_mac));
             let result = scan::scan(single.as_deref(), &home, &prog);
+            // Time the disk walk only, not the wait for DISM / simctl.
+            let ms = t0.elapsed().as_millis() as u64;
             *lock(&prog.current) = "@sysinfo".into();
             let sys = sys_job.join().unwrap_or_default();
-            let ms = t0.elapsed().as_millis() as u64;
             let mut st = lock(&state);
             match result {
                 Ok(tree) => {
