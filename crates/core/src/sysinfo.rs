@@ -2,11 +2,11 @@
 //! when each app was last opened. Gathered once after a scan.
 
 use std::collections::HashMap;
-use std::fs;
-use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
-use std::process::Command;
+#[cfg(target_os = "macos")]
+use std::{fs, os::unix::fs::MetadataExt, process::Command};
 
+#[cfg(target_os = "macos")]
 use serde_json::Value;
 
 #[derive(Clone, Debug)]
@@ -27,6 +27,7 @@ pub struct SysInfo {
     pub app_last_used: HashMap<PathBuf, i64>,
 }
 
+#[cfg(target_os = "macos")]
 /// Days since 1970-01-01 for a civil date (Howard Hinnant's algorithm).
 fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };
@@ -38,6 +39,7 @@ fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     era * 146097 + doe - 719468
 }
 
+#[cfg(target_os = "macos")]
 /// Parse "2026-10-13T18:24:40Z" or "2026-10-15 09:20:58 +0000" (UTC) to unix seconds.
 fn parse_time(s: &str) -> Option<i64> {
     let s = s.trim();
@@ -47,6 +49,7 @@ fn parse_time(s: &str) -> Option<i64> {
     Some(days_from_civil(y, mo, d) * 86400 + h * 3600 + mi * 60 + se)
 }
 
+#[cfg(target_os = "macos")]
 fn run_json(args: &[&str]) -> Option<Value> {
     let out = Command::new("/usr/bin/xcrun").args(args).output().ok()?;
     if !out.status.success() {
@@ -55,6 +58,7 @@ fn run_json(args: &[&str]) -> Option<Value> {
     serde_json::from_slice(&out.stdout).ok()
 }
 
+#[cfg(target_os = "macos")]
 fn runtimes() -> Vec<Runtime> {
     let Some(Value::Object(list)) = run_json(&["simctl", "runtime", "list", "-j"]) else { return vec![] };
     // runtimeIdentifier -> number of simulators using it
@@ -86,6 +90,7 @@ fn runtimes() -> Vec<Runtime> {
     out
 }
 
+#[cfg(target_os = "macos")]
 /// .app bundles in /Applications and one folder deeper.
 fn app_bundles() -> Vec<PathBuf> {
     let mut out = Vec::new();
@@ -103,6 +108,7 @@ fn app_bundles() -> Vec<PathBuf> {
     out
 }
 
+#[cfg(target_os = "macos")]
 /// When the app's program last ran: the newer of Spotlight's "last used"
 /// and the executable's access time (Spotlight misses apps not opened via Finder).
 fn app_last_used(apps: &[PathBuf]) -> HashMap<PathBuf, i64> {
@@ -135,6 +141,12 @@ fn app_last_used(apps: &[PathBuf]) -> HashMap<PathBuf, i64> {
     m
 }
 
+#[cfg(not(target_os = "macos"))]
+pub fn gather(_whole_mac: bool) -> SysInfo {
+    SysInfo::default()
+}
+
+#[cfg(target_os = "macos")]
 pub fn gather(whole_mac: bool) -> SysInfo {
     if !whole_mac {
         return SysInfo::default();
@@ -143,7 +155,7 @@ pub fn gather(whole_mac: bool) -> SysInfo {
     SysInfo { runtimes: runtimes(), app_last_used: app_last_used(&apps) }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 

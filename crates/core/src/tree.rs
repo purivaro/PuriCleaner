@@ -113,7 +113,10 @@ impl Tree {
     pub fn path(&self, id: u32) -> PathBuf {
         let mut p = self.root.clone();
         for c in self.components(id) {
-            p.push(c);
+            // Top-level names can hold several parts ("Users/me").
+            for part in c.split('/') {
+                p.push(part);
+            }
         }
         p
     }
@@ -128,7 +131,7 @@ impl Tree {
         let p = self.path(id);
         match p.strip_prefix(&self.home) {
             Ok(r) if r.as_os_str().is_empty() => "~".into(),
-            Ok(r) => format!("~/{}", r.display()),
+            Ok(r) => format!("~{}{}", std::path::MAIN_SEPARATOR, r.display()),
             Err(_) => p.display().to_string(),
         }
     }
@@ -157,7 +160,7 @@ impl Tree {
     /// Find a node by absolute path, e.g. `/Library/Developer/CoreSimulator`.
     pub fn lookup_abs(&self, path: &std::path::Path) -> Option<u32> {
         let rest = path.strip_prefix(&self.root).ok()?;
-        let rest = rest.to_string_lossy();
+        let rest = rest.to_string_lossy().replace('\\', "/");
         // Top-level names may span several components ("opt/homebrew").
         for &c in &self.node(0).children {
             let name = &*self.node(c).name;

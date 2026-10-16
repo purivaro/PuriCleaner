@@ -17,7 +17,63 @@ pub const SYS: u8 = 7;
 
 pub const KEYS: [&str; NCAT] = ["docs", "dev", "code", "sdk", "ai", "pkg", "apps", "sys"];
 
+/// Groups for folders outside home, by path below the system drive.
+#[cfg(windows)]
+const SYSTEM: &[(&str, u8)] = &[
+    ("Program Files", APPS),
+    ("Program Files (x86)", APPS),
+    ("ProgramData", SYS),
+    ("ProgramData/Microsoft/Windows/WER", SYS),
+];
+
+/// Explicit groups by home-relative path on Windows.
+#[cfg(windows)]
+const EXPLICIT: &[(&str, u8)] = &[
+    (".ollama", AI),
+    (".lmstudio", AI),
+    (".cache/huggingface", AI),
+    ("AppData/Local/Android", SDK),
+    (".android", SDK),
+    ("AppData/Local/npm-cache", PKG),
+    ("AppData/Local/Yarn", PKG),
+    ("AppData/Local/pnpm", PKG),
+    ("AppData/Local/pnpm-cache", PKG),
+    ("AppData/Local/pip", PKG),
+    ("AppData/Local/uv", PKG),
+    ("AppData/Local/NuGet", PKG),
+    (".nuget", PKG),
+    (".gradle", PKG),
+    (".m2", PKG),
+    (".cargo", PKG),
+    (".cache", PKG),
+    ("go", PKG),
+    ("AppData", DEV),
+    (".rustup", DEV),
+    (".vscode", DEV),
+    (".docker", DEV),
+    (".claude", DEV),
+    ("Documents", DOCS),
+    ("Desktop", DOCS),
+    ("Pictures", DOCS),
+    ("Music", DOCS),
+    ("Videos", DOCS),
+    ("Downloads", DOCS),
+    ("OneDrive", DOCS),
+    ("source", CODE),
+    ("Dev", CODE),
+    ("dev", CODE),
+    ("Projects", CODE),
+    ("projects", CODE),
+    ("Code", CODE),
+    ("code", CODE),
+    ("src", CODE),
+    ("repos", CODE),
+    ("GitHub", CODE),
+    ("workspace", CODE),
+];
+
 /// Groups for folders outside home, by path below `/`.
+#[cfg(not(windows))]
 const SYSTEM: &[(&str, u8)] = &[
     ("Applications", APPS),
     ("Library", SYS),
@@ -31,6 +87,7 @@ const SYSTEM: &[(&str, u8)] = &[
 ];
 
 /// Explicit groups by home-relative path. Checked at depth <= 4 only.
+#[cfg(not(windows))]
 const EXPLICIT: &[(&str, u8)] = &[
     // AI models
     (".ollama", AI),

@@ -22,6 +22,8 @@ pub enum Level {
     Review,
 }
 
+// Each platform's table uses only some finders.
+#[allow(dead_code)]
 enum Find {
     /// Home-relative paths; each existing one is an item. A `*` segment
     /// matches any folder name.
@@ -44,6 +46,8 @@ enum Find {
     UnusedApps,
     /// Old files in the per-user temp folder and app caches in /var/folders.
     UserTemp,
+    /// The Windows Recycle Bin (measured and emptied through the shell).
+    RecycleBin,
 }
 
 struct RuleDef {
@@ -64,6 +68,7 @@ const MIN_RULE_SIZE: u64 = 1000 * 1000;
 use Find::*;
 use Level::*;
 
+#[cfg(not(windows))]
 const RULES: &[RuleDef] = &[
     // ─── Safe: tools rebuild or re-download these on demand ───
     RuleDef {
@@ -599,13 +604,325 @@ const RULES: &[RuleDef] = &[
     },
 ];
 
+/// Windows: same ideas, Windows locations. Paths with a leading `/` are
+/// relative to the system drive.
+#[cfg(windows)]
+const RULES: &[RuleDef] = &[
+    // ─── Safe ───
+    RuleDef {
+        id: "npm",
+        level: Safe,
+        title: ["แคช npm", "npm cache"],
+        desc: [
+            "แพ็กเกจที่ npm ดาวน์โหลดเก็บไว้ ลบได้ npm จะโหลดใหม่เมื่อจำเป็น",
+            "Packages npm downloaded before. npm fetches them again when needed.",
+        ],
+        hint: "%LOCALAPPDATA%\\npm-cache",
+        command: Some("npm cache clean --force"),
+        find: Paths(&["AppData/Local/npm-cache/_cacache", "AppData/Local/npm-cache/_npx", "AppData/Local/npm-cache/_logs"]),
+    },
+    RuleDef {
+        id: "js-build",
+        level: Safe,
+        title: ["ไฟล์ build ของ Next.js / Turbo", "Next.js & Turbo build output"],
+        desc: [
+            "โฟลเดอร์ .next .turbo .nuxt .svelte-kit .parcel-cache ในโปรเจค สร้างใหม่ทุกครั้งที่ build/dev",
+            ".next, .turbo, .nuxt, .svelte-kit and .parcel-cache folders. Rebuilt on the next build or dev run.",
+        ],
+        hint: "*\\.next, .turbo",
+        command: None,
+        find: Pattern,
+    },
+    RuleDef {
+        id: "yarn-pnpm-bun",
+        level: Safe,
+        title: ["แคช Yarn / pnpm / Bun", "Yarn, pnpm & Bun caches"],
+        desc: [
+            "ที่เก็บแพ็กเกจกลางของ Yarn, pnpm และ Bun ลบแล้วจะดาวน์โหลดใหม่ตอนติดตั้ง",
+            "Shared package stores. Re-downloaded on the next install.",
+        ],
+        hint: "%LOCALAPPDATA%\\Yarn, pnpm",
+        command: Some("yarn cache clean; pnpm store prune"),
+        find: Paths(&["AppData/Local/Yarn/Cache", "AppData/Local/pnpm/store", "AppData/Local/pnpm-cache", ".bun/install/cache"]),
+    },
+    RuleDef {
+        id: "rust-target",
+        level: Safe,
+        title: ["ไฟล์ build ของ Rust (target)", "Rust build output (target\\)"],
+        desc: [
+            "โฟลเดอร์ target ข้างไฟล์ Cargo.toml สร้างใหม่ได้ด้วย cargo build",
+            "target folders next to Cargo.toml. cargo build recreates them.",
+        ],
+        hint: "*\\target",
+        command: Some("cargo clean"),
+        find: Pattern,
+    },
+    RuleDef {
+        id: "cargo",
+        level: Safe,
+        title: ["แคช Cargo", "Cargo registry cache"],
+        desc: ["crate ที่ Cargo ดาวน์โหลดไว้ โหลดใหม่อัตโนมัติ", "Downloaded crates. Fetched again on the next build."],
+        hint: "%USERPROFILE%\\.cargo\\registry",
+        command: None,
+        find: Paths(&[".cargo/registry/cache", ".cargo/registry/src", ".cargo/git/checkouts"]),
+    },
+    RuleDef {
+        id: "gradle",
+        level: Safe,
+        title: ["แคช Gradle", "Gradle caches"],
+        desc: ["ไลบรารีและ Gradle wrapper ที่ดาวน์โหลดไว้", "Downloaded libraries and Gradle wrappers."],
+        hint: "%USERPROFILE%\\.gradle",
+        command: None,
+        find: Paths(&[".gradle/caches", ".gradle/wrapper/dists", ".gradle/daemon", ".gradle/native"]),
+    },
+    RuleDef {
+        id: "nuget-maven",
+        level: Safe,
+        title: ["แคช NuGet / Maven", "NuGet & Maven caches"],
+        desc: ["แพ็กเกจ .NET และ Java ที่ดาวน์โหลดไว้ โหลดใหม่ตอน build", ".NET and Java packages. Downloaded again on the next build."],
+        hint: "%USERPROFILE%\\.nuget\\packages",
+        command: Some("dotnet nuget locals all --clear"),
+        find: Paths(&[".nuget/packages", "AppData/Local/NuGet/v3-cache", "AppData/Local/NuGet/Cache", ".m2/repository"]),
+    },
+    RuleDef {
+        id: "mobile-build",
+        level: Safe,
+        title: ["ไฟล์ build ของ Flutter / Android", "Flutter & Android build output"],
+        desc: [
+            "โฟลเดอร์ build, .dart_tool, .gradle และ .cxx ในโปรเจค สร้างใหม่ตอน build",
+            "build, .dart_tool, .gradle and .cxx folders in projects. Rebuilt on the next build.",
+        ],
+        hint: "*\\build, .dart_tool",
+        command: Some("flutter clean"),
+        find: Pattern,
+    },
+    RuleDef {
+        id: "python",
+        level: Safe,
+        title: ["แคช pip / uv / Poetry", "pip, uv & Poetry caches"],
+        desc: ["แพ็กเกจ Python ที่ดาวน์โหลดไว้ ไม่กระทบ virtualenv", "Downloaded Python packages. Existing virtualenvs keep working."],
+        hint: "%LOCALAPPDATA%\\pip\\Cache",
+        command: Some("uv cache clean; pip cache purge"),
+        find: Paths(&["AppData/Local/pip/Cache", "AppData/Local/uv/cache", "AppData/Local/pypoetry/Cache/cache"]),
+    },
+    RuleDef {
+        id: "browsers",
+        level: Safe,
+        title: ["เบราว์เซอร์ทดสอบ (Puppeteer / Playwright)", "Puppeteer & Playwright browsers"],
+        desc: ["Chrome/Firefox ที่เครื่องมือทดสอบดาวน์โหลดมา", "Browsers downloaded by test tools."],
+        hint: "%LOCALAPPDATA%\\ms-playwright",
+        command: Some("npx playwright install"),
+        find: Paths(&[".cache/puppeteer", "AppData/Local/ms-playwright"]),
+    },
+    RuleDef {
+        id: "app-web-caches",
+        level: Safe,
+        title: ["แคชของเบราว์เซอร์และแอป Electron", "Browser & Electron app caches"],
+        desc: [
+            "แคชหน้าเว็บ โค้ด และกราฟิกของ Chrome, Edge, VS Code, Discord, Teams ฯลฯ ไม่กระทบรหัสผ่าน ประวัติ หรือการตั้งค่า",
+            "Web, code and GPU caches of Chrome, Edge, VS Code, Discord, Teams and others. Passwords, history and settings are untouched.",
+        ],
+        hint: "%LOCALAPPDATA%\\…\\User Data\\*\\Cache",
+        command: None,
+        find: Paths(&[
+            "AppData/Local/Google/Chrome/User Data/*/Cache",
+            "AppData/Local/Google/Chrome/User Data/*/Code Cache",
+            "AppData/Local/Google/Chrome/User Data/*/GPUCache",
+            "AppData/Local/Google/Chrome/User Data/*/Service Worker/CacheStorage",
+            "AppData/Local/Microsoft/Edge/User Data/*/Cache",
+            "AppData/Local/Microsoft/Edge/User Data/*/Code Cache",
+            "AppData/Local/Microsoft/Edge/User Data/*/GPUCache",
+            "AppData/Local/Microsoft/Edge/User Data/*/Service Worker/CacheStorage",
+            "AppData/Local/BraveSoftware/Brave-Browser/User Data/*/Cache",
+            "AppData/Local/BraveSoftware/Brave-Browser/User Data/*/Code Cache",
+            "AppData/Roaming/*/Cache",
+            "AppData/Roaming/*/Code Cache",
+            "AppData/Roaming/*/GPUCache",
+            "AppData/Roaming/*/CachedData",
+            "AppData/Roaming/*/CachedExtensionVSIXs",
+            "AppData/Roaming/*/Service Worker/CacheStorage",
+        ]),
+    },
+    RuleDef {
+        id: "shader-caches",
+        level: Safe,
+        title: ["แคชกราฟิก (shader)", "Graphics shader caches"],
+        desc: [
+            "แคช shader ของ DirectX และการ์ดจอ สร้างใหม่เองตอนเปิดเกมหรือแอป",
+            "DirectX and GPU driver shader caches. Rebuilt when games and apps run.",
+        ],
+        hint: "%LOCALAPPDATA%\\D3DSCache, NVIDIA\\DXCache",
+        command: None,
+        find: Paths(&[
+            "AppData/Local/D3DSCache",
+            "AppData/Local/NVIDIA/DXCache",
+            "AppData/Local/NVIDIA/GLCache",
+            "AppData/Local/AMD/DxCache",
+            "AppData/Local/AMD/GLCache",
+        ]),
+    },
+    RuleDef {
+        id: "user-temp",
+        level: Safe,
+        title: ["ไฟล์ชั่วคราว (Temp)", "Temporary files"],
+        desc: [
+            "ไฟล์ใน Temp ที่เก่ากว่า 3 วัน โปรแกรมที่ติดตั้งหรือทำงานเสร็จแล้วทิ้งไว้",
+            "Files in Temp older than 3 days, left behind by installers and apps.",
+        ],
+        hint: "%LOCALAPPDATA%\\Temp",
+        command: None,
+        find: UserTemp,
+    },
+    RuleDef {
+        id: "crash-reports",
+        level: Safe,
+        title: ["รายงานข้อขัดข้องและ crash dump", "Crash reports & dumps"],
+        desc: [
+            "ไฟล์ที่ Windows และแอปบันทึกไว้ตอนโปรแกรมค้างหรือปิดเอง ไม่จำเป็นต่อการใช้งาน",
+            "Files Windows and apps saved when something crashed. Not needed to run anything.",
+        ],
+        hint: "%LOCALAPPDATA%\\CrashDumps, WER",
+        command: None,
+        find: Paths(&[
+            "AppData/Local/CrashDumps",
+            "AppData/Local/Microsoft/Windows/WER",
+            "/ProgramData/Microsoft/Windows/WER/ReportArchive",
+            "/ProgramData/Microsoft/Windows/WER/ReportQueue",
+        ]),
+    },
+    RuleDef {
+        id: "app-logs",
+        level: Safe,
+        title: ["ไฟล์ล็อกของ VS Code / Cursor", "VS Code & Cursor logs"],
+        desc: ["ล็อกที่ editor เขียนทิ้งไว้", "Log files written by the editors."],
+        hint: "%APPDATA%\\Code\\logs",
+        command: None,
+        find: Paths(&["AppData/Roaming/Code/logs", "AppData/Roaming/Cursor/logs"]),
+    },
+    // ─── Review ───
+    RuleDef {
+        id: "recycle-bin",
+        level: Review,
+        title: ["ถังรีไซเคิล", "Recycle Bin"],
+        desc: [
+            "ไฟล์ที่ลบไปแล้วยังกินพื้นที่อยู่จนกว่าจะล้างถัง ล้างแล้วกู้คืนไม่ได้",
+            "Deleted files still use space until the bin is emptied. Emptying cannot be undone.",
+        ],
+        hint: "$Recycle.Bin",
+        command: Some("Clear-RecycleBin -Force"),
+        find: RecycleBin,
+    },
+    RuleDef {
+        id: "android",
+        level: Review,
+        title: ["Android emulator และ system image", "Android emulators & system images"],
+        desc: [
+            "เครื่องจำลองและอิมเมจระบบ Android ถ้าจะใช้อีกต้องดาวน์โหลดใหม่ผ่าน Android Studio",
+            "Emulator disks and system images. Download again from Android Studio if you need them.",
+        ],
+        hint: "%USERPROFILE%\\.android\\avd",
+        command: None,
+        find: Paths(&["AppData/Local/Android/Sdk/system-images", ".android/avd", ".android/cache"]),
+    },
+    RuleDef {
+        id: "ollama",
+        level: Review,
+        title: ["โมเดล AI ของ Ollama", "Ollama models"],
+        desc: ["โมเดลภาษาที่ดาวน์โหลดไว้ ถ้าจะลบบางตัวให้ใช้ ollama rm", "Downloaded language models. To remove just one, use ollama rm."],
+        hint: "%USERPROFILE%\\.ollama\\models",
+        command: Some("ollama list   # then: ollama rm <model>"),
+        find: Paths(&[".ollama/models"]),
+    },
+    RuleDef {
+        id: "ai-models",
+        level: Review,
+        title: ["โมเดล AI อื่น ๆ (Hugging Face / LM Studio)", "Other AI models (Hugging Face, LM Studio)"],
+        desc: ["โมเดลและ dataset ที่ดาวน์โหลดไว้ โหลดใหม่ได้แต่ไฟล์ใหญ่", "Downloaded models and datasets. Re-downloadable, but large."],
+        hint: "%USERPROFILE%\\.cache\\huggingface",
+        command: None,
+        find: Paths(&[".cache/huggingface", ".lmstudio/models"]),
+    },
+    RuleDef {
+        id: "docker",
+        level: Review,
+        title: ["ดิสก์ของ Docker", "Docker disk image"],
+        desc: [
+            "เก็บ image, container และ volume ทั้งหมดของ Docker แนะนำใช้ docker system prune แทนการลบไฟล์",
+            "Holds all Docker images, containers and volumes. Prefer docker system prune over deleting it.",
+        ],
+        hint: "%LOCALAPPDATA%\\Docker\\wsl",
+        command: Some("docker system prune -a"),
+        find: Paths(&["AppData/Local/Docker/wsl"]),
+    },
+    RuleDef {
+        id: "idle-deps",
+        level: Review,
+        title: ["node_modules ในโปรเจคที่ไม่ได้แตะ", "node_modules in idle projects"],
+        desc: [
+            "โปรเจคที่ไม่มีไฟล์ถูกแก้เกิน 30 วัน ลบได้แล้วสั่ง npm install ใหม่เมื่อกลับมาทำ",
+            "Projects with no edits for 30+ days. Run npm install again when you come back.",
+        ],
+        hint: "*\\node_modules",
+        command: None,
+        find: Pattern,
+    },
+    RuleDef {
+        id: "idle-venv",
+        level: Review,
+        title: ["Python virtualenv ในโปรเจคที่ไม่ได้แตะ", "Python virtualenvs in idle projects"],
+        desc: [
+            "โฟลเดอร์ .venv / venv ของโปรเจคที่ไม่ได้แก้เกิน 30 วัน สร้างใหม่ได้จาก requirements",
+            ".venv / venv folders in projects idle for 30+ days. Recreate from requirements.",
+        ],
+        hint: "*\\.venv",
+        command: None,
+        find: Pattern,
+    },
+    RuleDef {
+        id: "worktrees",
+        level: Review,
+        title: ["git worktree ที่ Claude Code สร้างไว้", "Claude Code worktrees"],
+        desc: ["สำเนาโปรเจคที่ใช้ทำงานคู่ขนาน ตรวจว่า merge/push แล้วก่อนลบ", "Parallel working copies. Make sure their work is merged or pushed first."],
+        hint: "*\\.claude\\worktrees",
+        command: Some("git worktree prune"),
+        find: Pattern,
+    },
+    RuleDef {
+        id: "installers",
+        level: Review,
+        title: ["ไฟล์ติดตั้งใน Downloads", "Installers in Downloads"],
+        desc: ["ไฟล์ .exe .msi .iso ที่ติดตั้งเสร็จแล้วส่วนใหญ่ไม่ต้องเก็บ", ".exe, .msi and .iso files. Usually not needed once installed."],
+        hint: "Downloads\\*.exe, *.msi",
+        command: None,
+        find: Installers,
+    },
+    RuleDef {
+        id: "old-downloads",
+        level: Review,
+        title: ["ไฟล์ใหญ่เก่า ๆ ใน Downloads", "Large old downloads"],
+        desc: ["ไฟล์เกิน 100 MB ที่ไม่ได้แตะเกิน 90 วัน", "Files over 100 MB untouched for 90+ days."],
+        hint: "Downloads",
+        command: None,
+        find: OldDownloads,
+    },
+    RuleDef {
+        id: "dot-cache",
+        level: Review,
+        title: ["แคชอื่น ๆ ใน .cache", "Other caches in .cache"],
+        desc: ["แคชของเครื่องมือ command line ส่วนใหญ่ลบได้", "Command-line tool caches. Mostly disposable."],
+        hint: "%USERPROFILE%\\.cache",
+        command: None,
+        find: ChildrenOf(".cache", &[]),
+    },
+];
+
 const JS_BUILD: &[&str] = &[".next", ".turbo", ".nuxt", ".svelte-kit", ".parcel-cache", ".angular"];
 /// Folders that do not count as "recent work" when deciding if a project is idle.
 const NOT_ACTIVITY: &[&str] = &[
     "node_modules", ".git", ".next", ".turbo", ".nuxt", "target", ".venv", "venv", "dist", "build", ".cache",
     "Pods", ".dart_tool", ".gradle", ".build", ".cxx",
 ];
-const INSTALLER_EXT: &[&str] = &["dmg", "pkg", "iso", "xip", "mpkg"];
+const INSTALLER_EXT: &[&str] = &["dmg", "pkg", "iso", "xip", "mpkg", "msi", "exe", "msix", "appx"];
 
 #[derive(Serialize, Clone, Debug)]
 pub struct Item {
@@ -636,6 +953,8 @@ pub enum Action {
     Finder,
     /// Run a tool that knows how to remove it.
     Command { argv: Vec<String> },
+    /// Empty the Windows Recycle Bin.
+    EmptyRecycleBin,
 }
 
 /// Ids at or above this are not tree nodes.
@@ -778,8 +1097,10 @@ fn downloads(tree: &Tree, installers: bool) -> Vec<u32> {
 
 /// Expand a home-relative path whose segments may be `*`.
 fn glob(tree: &Tree, pattern: &str) -> Vec<u32> {
-    if pattern.starts_with('/') {
-        return tree.lookup_abs(std::path::Path::new(pattern)).into_iter().collect();
+    if let Some(below_root) = pattern.strip_prefix('/') {
+        // Relative to `/` on macOS, to the system drive on Windows.
+        let path = crate::scan::system_root().join(below_root);
+        return tree.lookup_abs(&path).into_iter().collect();
     }
     let mut cur = vec![tree.home_id];
     for seg in pattern.split('/').filter(|s| !s.is_empty()) {
@@ -873,6 +1194,16 @@ fn unused_apps(tree: &Tree, sys: &SysInfo, last_used: &mut HashMap<u32, i64>) ->
 
 const TEMP_DAYS: i64 = 3;
 
+#[cfg(windows)]
+fn user_temp(tree: &Tree) -> Vec<u32> {
+    let before = now() - TEMP_DAYS * 86400;
+    match tree.lookup("AppData/Local/Temp") {
+        Some(t) => tree.node(t).children.iter().copied().filter(|&c| tree.node(c).newest < before).collect(),
+        None => vec![],
+    }
+}
+
+#[cfg(not(windows))]
 fn user_temp(tree: &Tree) -> Vec<u32> {
     let Some(dir) = crate::scan::user_var_dir() else { return vec![] };
     let before = now() - TEMP_DAYS * 86400;
@@ -886,7 +1217,14 @@ fn user_temp(tree: &Tree) -> Vec<u32> {
     out
 }
 
-fn owned_by_me(path: &std::path::Path) -> bool {
+/// Windows: anything outside the user's profile needs elevation to delete.
+#[cfg(windows)]
+fn owned_by_me(tree: &Tree, path: &std::path::Path) -> bool {
+    path.starts_with(&tree.home)
+}
+
+#[cfg(unix)]
+fn owned_by_me(_tree: &Tree, path: &std::path::Path) -> bool {
     use std::os::unix::fs::MetadataExt;
     let uid = unsafe { libc::getuid() };
     std::fs::symlink_metadata(path).map(|m| m.uid() == uid).unwrap_or(true)
@@ -924,10 +1262,25 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
             BrewOld => brew_old(tree),
             UnusedApps => unused_apps(tree, sys, &mut last_used),
             UserTemp => user_temp(tree),
-            Runtimes => vec![],
+            Runtimes | RecycleBin => vec![],
         };
 
         let mut items = Vec::new();
+        if matches!(def.find, RecycleBin) {
+            if let Some((size, count)) = crate::disk::recycle_bin() {
+                items.push(Item {
+                    id: VIRTUAL + 0x0800_0000,
+                    path: "$Recycle.Bin".into(),
+                    label: None,
+                    size,
+                    files: count,
+                    newest: 0,
+                    last_used: None,
+                    sims: None,
+                    action: Action::EmptyRecycleBin,
+                });
+            }
+        }
         if matches!(def.find, Runtimes) {
             for (i, r) in sys.runtimes.iter().enumerate() {
                 items.push(Item {
@@ -968,7 +1321,7 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
             let path = tree.path(c);
             let action = if matches!(def.find, UnusedApps) {
                 Action::Finder
-            } else if owned_by_me(&path) {
+            } else if owned_by_me(tree, &path) {
                 Action::Remove
             } else {
                 Action::Admin

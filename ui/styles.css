@@ -145,7 +145,8 @@ svg { display: block; }
   -webkit-user-select: none;
   user-select: none;
 }
-.is-tauri .topbar { padding-left: 86px; }
+/* Room for the macOS traffic lights over the content. */
+.is-tauri.is-macos .topbar { padding-left: 86px; }
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand-icon { width: 30px; height: 30px; border-radius: 8px; }
 .brand-name { font-weight: 700; font-size: 15px; letter-spacing: -.01em; }

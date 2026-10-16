@@ -7,7 +7,6 @@
 
 use std::collections::HashSet;
 use std::fs;
-use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
 use std::sync::Mutex;
@@ -61,14 +60,14 @@ impl Progress {
     }
 }
 
-const SF_DATALESS: u32 = 0x4000_0000;
-
+#[cfg(target_os = "macos")]
 extern "C" {
     fn setiopolicy_np(iotype: i32, scope: i32, policy: i32) -> i32;
 }
 
 /// Ask macOS never to download cloud placeholders on our behalf, so just
 /// looking at a folder cannot pull gigabytes from iCloud.
+#[cfg(target_os = "macos")]
 pub fn forbid_cloud_downloads() {
     const IOPOL_TYPE_VFS_MATERIALIZE_DATALESS_FILES: i32 = 3;
     const IOPOL_SCOPE_PROCESS: i32 = 0;
@@ -81,6 +80,10 @@ pub fn forbid_cloud_downloads() {
         );
     }
 }
+
+/// Elsewhere the scan simply skips placeholders (see `Entry::cloud_only`).
+#[cfg(not(target_os = "macos"))]
+pub fn forbid_cloud_downloads() {}
 
 struct SFile {
     name: Box<str>,
@@ -111,6 +114,7 @@ struct Ctx<'a> {
 }
 
 /// Every mount point except the system and data volumes themselves.
+#[cfg(target_os = "macos")]
 fn foreign_mounts() -> HashSet<PathBuf> {
     let mut out = HashSet::new();
     unsafe {
@@ -129,6 +133,13 @@ fn foreign_mounts() -> HashSet<PathBuf> {
         }
     }
     out
+}
+
+/// Windows reports mounted folders as reparse points, which the scan already
+/// skips, so there is nothing extra to collect.
+#[cfg(not(target_os = "macos"))]
+fn foreign_mounts() -> HashSet<PathBuf> {
+    HashSet::new()
 }
 
 fn scan_dir(path: &Path, name: Box<str>, ctx: &Ctx) -> SDir {
@@ -167,7 +178,7 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Ctx) -> SDir {
         if e.kind == Kind::Dir {
             // An iCloud folder that is not on this Mac: opening it would
             // start a download, so leave it alone (it takes no space).
-            if e.flags & SF_DATALESS == 0 {
+            if !e.cloud_only() {
                 let p = path.join(&*e.name);
                 if ctx.mounts.is_empty() || !ctx.mounts.contains(&p) {
                     subdirs.push((p, e.name));
@@ -258,7 +269,11 @@ pub fn measure(path: &Path) -> (u64, u64) {
     forbid_cloud_downloads();
     let Ok(md) = fs::symlink_metadata(path) else { return (0, 0) };
     if !md.is_dir() {
-        return (md.blocks() * 512, 1);
+        #[cfg(unix)]
+        let bytes = std::os::unix::fs::MetadataExt::blocks(&md) * 512;
+        #[cfg(windows)]
+        let bytes = md.len().div_ceil(4096) * 4096;
+        return (bytes, 1);
     }
     let prog = Progress::default();
     let ctx = Ctx { prog: &prog, seen_links: Mutex::new(HashSet::new()), mounts: foreign_mounts() };
@@ -267,6 +282,12 @@ pub fn measure(path: &Path) -> (u64, u64) {
 }
 
 /// The per-user folder macOS keeps under /private/var/folders (holds T = temp, C = cache).
+#[cfg(not(target_os = "macos"))]
+pub fn user_var_dir() -> Option<PathBuf> {
+    None
+}
+
+#[cfg(target_os = "macos")]
 pub fn user_var_dir() -> Option<PathBuf> {
     const CS_DARWIN_USER_TEMP_DIR: libc::c_int = 65537;
     let mut buf = vec![0u8; 1024];
@@ -279,15 +300,42 @@ pub fn user_var_dir() -> Option<PathBuf> {
     t.parent().map(Path::to_path_buf)
 }
 
-/// Folders scanned in whole-Mac mode, besides home.
+/// Top of the whole-computer view: `/` on macOS, the system drive on Windows.
+pub fn system_root() -> PathBuf {
+    #[cfg(windows)]
+    {
+        let drive = std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into());
+        PathBuf::from(format!("{drive}\\"))
+    }
+    #[cfg(not(windows))]
+    PathBuf::from("/")
+}
+
+/// Folders scanned in whole-computer mode, besides home.
 fn system_roots(home: &Path) -> Vec<PathBuf> {
+    #[cfg(windows)]
+    let mut roots: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "ProgramData"]
+        .iter()
+        .filter_map(std::env::var_os)
+        .map(PathBuf::from)
+        .collect();
+    #[cfg(not(windows))]
     let mut roots: Vec<PathBuf> = ["/Applications", "/Library", "/opt/homebrew", "/usr/local"]
         .iter()
         .map(PathBuf::from)
         .collect();
     roots.extend(user_var_dir());
+    roots.sort();
+    roots.dedup();
     roots.retain(|r| r.is_dir() && !r.starts_with(home) && !home.starts_with(r));
     roots
+}
+
+/// Name of a scanned root below the top: its path components joined by `/`
+/// (e.g. "Users/me", "Program Files (x86)").
+pub fn root_name(top: &Path, r: &Path) -> String {
+    let rel = r.strip_prefix(top).unwrap_or(r);
+    rel.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/")
 }
 
 fn sum(name: Box<str>, dirs: Vec<SDir>) -> SDir {
@@ -324,18 +372,19 @@ pub fn scan(single: Option<&Path>, home: &Path, prog: &Progress) -> std::io::Res
         }
         None => {
             fs::symlink_metadata(home)?;
+            let top = system_root();
             let mut roots = vec![home.to_path_buf()];
             roots.extend(system_roots(home));
             let dirs: Vec<SDir> = pool.install(|| {
                 roots
                     .par_iter()
                     .map(|r| {
-                        let name = r.strip_prefix("/").unwrap_or(r).display().to_string();
-                        scan_dir(r, name.into(), &ctx)
+                        scan_dir(r, root_name(&top, r).into(), &ctx)
                     })
                     .collect()
             });
-            (PathBuf::from("/"), sum("/".into(), dirs))
+            let name: Box<str> = top.display().to_string().into();
+            (top, sum(name, dirs))
         }
     };
 
@@ -343,7 +392,7 @@ pub fn scan(single: Option<&Path>, home: &Path, prog: &Progress) -> std::io::Res
     flatten(sd, NONE, &mut nodes);
     let mut tree = Tree { root, home: home.to_path_buf(), home_id: 0, nodes, unreadable: 0 };
     if single.is_none() {
-        let home_name = home.strip_prefix("/").unwrap_or(home).display().to_string();
+        let home_name = root_name(&tree.root, home);
         tree.home_id = tree.child(0, &home_name).unwrap_or(0);
     }
     tree.unreadable = (0..tree.nodes.len() as u32)

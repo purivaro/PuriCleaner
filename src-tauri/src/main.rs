@@ -1,6 +1,9 @@
 //! Puri Cleaner desktop app: a window around the shared UI in `ui/`, with
 //! one command that forwards every call to `puri_core::App`.
 
+// No console window behind the app on Windows.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use puri_core::App;
 use serde_json::Value;
 

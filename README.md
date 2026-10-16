@@ -48,6 +48,24 @@ cargo run --release -p puri-cleaner-web
 cargo run --release -p puri_core --example scan
 ```
 
+### Windows (10/11, 64-bit)
+
+สร้างจาก Mac ได้ด้วย `./scripts/build-windows.sh` ผลลัพธ์อยู่ที่ `dist/windows/`
+
+| ไฟล์ | ใช้ทำอะไร |
+|---|---|
+| `Puri Cleaner_0.1.0_x64-setup.exe` | ตัวติดตั้ง (ไม่ต้องสิทธิ์ admin, เลือกภาษาไทย/อังกฤษได้) |
+| `Puri Cleaner portable.zip` | แตกไฟล์แล้วเปิด `Puri Cleaner.exe` ได้เลย ไม่ต้องติดตั้ง |
+| `puri-cleaner-web.exe` | เวอร์ชันเบราว์เซอร์ ดับเบิลคลิกแล้วเปิดในเบราว์เซอร์ |
+
+ไม่ได้เซ็นโค้ด Windows SmartScreen จะเตือนครั้งแรก ให้กด *More info › Run anyway*
+แอปใช้ WebView2 ที่มีใน Windows 10/11 อยู่แล้ว (ถ้าไม่มี ตัวติดตั้งจะดาวน์โหลดให้)
+
+บน Windows สแกนโฟลเดอร์ผู้ใช้, `Program Files`, `Program Files (x86)` และ `ProgramData`
+คำแนะนำเฉพาะ Windows: แคช npm/pip/NuGet/Gradle ใน AppData, แคช Chrome/Edge/Electron, Temp,
+crash dump, แคช shader ของการ์ดจอ, ถังรีไซเคิล, Android emulator, Docker (WSL) ฯลฯ
+ไฟล์ OneDrive ที่ไม่ได้อยู่ในเครื่องจะถูกข้ามโดยไม่ดาวน์โหลด ของที่อยู่นอกโฟลเดอร์ผู้ใช้จะขอสิทธิ์ผ่าน UAC
+
 ## ปลอดภัยแค่ไหน
 
 - **การสแกนอ่านอย่างเดียว** และไม่ไปตามลิงก์ (symlink) ไม่ข้ามไปดิสก์อื่น

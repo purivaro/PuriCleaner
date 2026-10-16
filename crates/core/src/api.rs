@@ -98,11 +98,61 @@ fn arg_ids(args: &Value) -> Vec<u32> {
         .unwrap_or_default()
 }
 
+#[cfg(not(windows))]
 fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
+/// PowerShell single-quoted string.
+#[cfg(windows)]
+fn ps_quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "''"))
+}
+
+/// Delete paths as administrator, after Windows asks (UAC) once.
+#[cfg(windows)]
+fn admin_remove(paths: &[PathBuf], _thai: bool) -> Result<(), String> {
+    let list = paths.iter().map(|p| ps_quote(&p.to_string_lossy())).collect::<Vec<_>>().join(",");
+    let inner = format!("Remove-Item -LiteralPath {list} -Recurse -Force -ErrorAction SilentlyContinue");
+    // Encode the inner command so no quoting survives two shells.
+    let encoded = {
+        let utf16: Vec<u8> = inner.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
+        base64(&utf16)
+    };
+    let outer = format!(
+        "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-EncodedCommand','{encoded}'"
+    );
+    let out = Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &outer])
+        .output()
+        .map_err(|e| e.to_string())?;
+    if out.status.success() {
+        Ok(())
+    } else {
+        let msg = String::from_utf8_lossy(&out.stderr).trim().to_string();
+        Err(if msg.contains("canceled") || msg.contains("cancelled") { "cancelled".into() } else { msg })
+    }
+}
+
+#[cfg(windows)]
+fn base64(data: &[u8]) -> String {
+    const T: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for c in data.chunks(3) {
+        let n = (c[0] as u32) << 16 | (*c.get(1).unwrap_or(&0) as u32) << 8 | *c.get(2).unwrap_or(&0) as u32;
+        for i in 0..4 {
+            if i <= c.len() {
+                out.push(T[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
 /// Delete paths as root, after macOS asks for the admin password once.
+#[cfg(not(windows))]
 fn admin_remove(paths: &[PathBuf], thai: bool) -> Result<(), String> {
     let cmd = format!(
         "/bin/rm -rf -- {}",
@@ -130,7 +180,9 @@ fn admin_remove(paths: &[PathBuf], thai: bool) -> Result<(), String> {
 
 impl App {
     pub fn new(single: Option<PathBuf>) -> Self {
-        let home = std::env::var_os("HOME").map(PathBuf::from).unwrap_or_else(|| PathBuf::from("/"));
+        let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" })
+            .map(PathBuf::from)
+            .unwrap_or_else(scan::system_root);
         App {
             single,
             home,
@@ -162,6 +214,7 @@ impl App {
             }
             "reveal" => self.reveal(arg_u32(args, "id").ok_or("missing id")?),
             "open_fda" => {
+                #[cfg(target_os = "macos")]
                 let _ = Command::new("open")
                     .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")
                     .spawn();
@@ -243,6 +296,7 @@ impl App {
         Ok(json!({
             "root": tree.display(0),
             "whole_mac": self.single.is_none(),
+            "os": std::env::consts::OS,
             "disk_total": total,
             "disk_free": free,
             "scanned": root.size,
@@ -358,11 +412,41 @@ impl App {
             }
         };
         let target = if path.exists() { path } else { path.parent().map(Path::to_path_buf).unwrap_or(path) };
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            // explorer wants exactly: /select,"C:\path"
+            Command::new("explorer")
+                .raw_arg(format!("/select,\"{}\"", target.display()))
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        #[cfg(not(windows))]
         Command::new("open").arg("-R").arg(&target).spawn().map_err(|e| e.to_string())?;
         Ok(json!({}))
     }
 
+    /// The PowerShell line that removes one item.
+    #[cfg(windows)]
+    fn shell_line(&self, tree: &Tree, it: &Item) -> String {
+        let path = |id| {
+            let p = tree.path(id).to_string_lossy().into_owned();
+            let home = self.home.to_string_lossy().into_owned();
+            match p.strip_prefix(&home) {
+                Some(rest) => format!("\"$env:USERPROFILE{}\"", rest.replace('`', "``").replace('$', "`$").replace('"', "`\"")),
+                None => ps_quote(&p),
+            }
+        };
+        match &it.action {
+            Action::Command { argv } => argv.iter().map(|a| if a.contains(' ') { ps_quote(a) } else { a.clone() }).collect::<Vec<_>>().join(" "),
+            Action::EmptyRecycleBin => "Clear-RecycleBin -Force".into(),
+            Action::Admin => format!("Remove-Item -LiteralPath {} -Recurse -Force   # Run as administrator", path(it.id)),
+            Action::Remove | Action::Finder => format!("Remove-Item -LiteralPath {} -Recurse -Force", path(it.id)),
+        }
+    }
+
     /// The shell line that removes one item.
+    #[cfg(not(windows))]
     fn shell_line(&self, tree: &Tree, it: &Item) -> String {
         let quote = |p: &Path| {
             let s = p.to_string_lossy();
@@ -374,6 +458,7 @@ impl App {
         match &it.action {
             Action::Command { argv } => argv.iter().map(|a| if a.contains(' ') { sh_quote(a) } else { a.clone() }).collect::<Vec<_>>().join(" "),
             Action::Admin => format!("sudo rm -rf -- {}", quote(&tree.path(it.id))),
+            Action::EmptyRecycleBin => "# (Windows only)".into(),
             Action::Remove | Action::Finder => format!("rm -rf -- {}", quote(&tree.path(it.id))),
         }
     }
@@ -481,6 +566,7 @@ impl App {
                             }
                         }),
                     Action::Finder => clean::trash_with_finder(&j.path),
+                    Action::EmptyRecycleBin => crate::disk::empty_recycle_bin(),
                     _ => clean::remove(&j.path, mode),
                 };
                 let to_trash = matches!(j.action, Action::Finder) || (j.action == Action::Remove && mode == Mode::Trash);

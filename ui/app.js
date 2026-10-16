@@ -4,6 +4,9 @@
 
 const TAURI = window.__TAURI__ && window.__TAURI__.core;
 if (TAURI) document.documentElement.classList.add('is-tauri');
+// The server only listens on this computer, so the browser's OS is the scanned one.
+const OS = /Windows/.test(navigator.userAgent) ? 'windows' : 'macos';
+document.documentElement.classList.add('is-' + OS);
 
 function store(key, value) {
   try {
@@ -267,10 +270,57 @@ function applyTheme(theme) {
 // Set early so the page never flashes the wrong theme; the button label comes later.
 if (keep('puri-theme')) document.documentElement.dataset.theme = keep('puri-theme');
 
+/* Wording that differs on Windows (Explorer, Recycle Bin, UAC, OneDrive). */
+const I18N_WIN = {
+  th: {
+    scanning_title: 'กำลังสแกนทั้งเครื่อง…',
+    scan_stalled: 'ไม่มีความคืบหน้าสักพักแล้ว อาจมีโฟลเดอร์ที่ตอบช้าหรือรอสิทธิ์อยู่',
+    scan_note: 'อ่านอย่างเดียว ยังไม่มีการลบอะไร ไฟล์ OneDrive ที่ไม่ได้อยู่ในเครื่องจะถูกข้ามโดยไม่ดาวน์โหลด',
+    not_scanned: 'Windows และอื่น ๆ',
+    lg_system: 'Windows และอื่น ๆ',
+    reveal: 'เปิดใน File Explorer',
+    this_mac: 'PC เครื่องนี้',
+    macos_tile: 'Windows และพื้นที่ที่อ่านไม่ได้',
+    macos_tip: 'ตัวระบบ Windows, ไฟล์ page/hibernate, จุดคืนค่าระบบ และโฟลเดอร์ที่ไม่มีสิทธิ์อ่าน ส่วนนี้ลบเองไม่ได้ (ใช้ Disk Cleanup ของ Windows)',
+    note_admin: 'อยู่นอกโฟลเดอร์ผู้ใช้ Windows จะขอสิทธิ์ผู้ดูแลระบบ (UAC) และจะลบถาวรเสมอ',
+    note_finder: 'จะถูกย้ายไปถังรีไซเคิลเสมอ กู้คืนได้',
+    fda_text: 'อ่านไม่ได้ {n} โฟลเดอร์ ถ้าเปิดโปรแกรมแบบ Run as administrator ตัวเลขจะครบขึ้น',
+    script_text: 'คัดลอกไปวางใน PowerShell ได้ อ่านก่อนรันทุกครั้ง คำสั่งเหล่านี้ลบถาวร ไม่ผ่านถังรีไซเคิล',
+    mode_trash: 'ย้ายไปถังรีไซเคิล',
+    mode_trash_d: 'กู้คืนได้ แต่พื้นที่จะคืนเมื่อล้างถังรีไซเคิล',
+    confirm_trash: 'ย้ายไปถังรีไซเคิล',
+    done_moved: 'ย้ายไปถังรีไซเคิลแล้ว',
+    done_trash_note: 'พื้นที่จะคืนเมื่อล้างถังรีไซเคิล (คลิกขวาที่ Recycle Bin › Empty Recycle Bin)',
+    lg_free: 'ว่าง',
+  },
+  en: {
+    scan_stalled: 'No progress for a while. A folder may be slow to answer or waiting for permission.',
+    scan_note: 'Read-only, nothing is deleted. OneDrive files that are not on this PC are skipped, never downloaded.',
+    scanning_title: 'Scanning your PC…',
+    explorer_sub: 'Your whole PC, sized by space used. Click a tile to open it.',
+    not_scanned: 'Windows & other',
+    lg_system: 'Windows & other',
+    reveal: 'Show in File Explorer',
+    this_mac: 'This PC',
+    macos_tile: 'Windows & unreadable space',
+    macos_tip: 'Windows itself, page and hibernation files, restore points and folders we cannot read. Use Windows Disk Cleanup for these.',
+    note_admin: 'Outside your user folder: Windows will ask for administrator permission (UAC), and they are always deleted permanently.',
+    note_finder: 'Always moved to the Recycle Bin, so you can restore them.',
+    fda_text: '{n} folders could not be read. Run as administrator for complete numbers.',
+    script_text: 'Paste into PowerShell. Always read it first: these commands delete permanently and skip the Recycle Bin.',
+    mode_trash: 'Move to Recycle Bin',
+    mode_trash_d: 'Recoverable. Space comes back when you empty the Recycle Bin.',
+    confirm_trash: 'Move to Recycle Bin',
+    done_moved: 'Moved to the Recycle Bin',
+    done_trash_note: 'Space comes back when you empty the Recycle Bin (right-click Recycle Bin › Empty Recycle Bin).',
+  },
+};
+
 let lang = keep('puri-lang') || ((navigator.language || 'th').startsWith('en') ? 'en' : 'th');
 
 function t(key, vars) {
-  let s = (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
+  const win = OS === 'windows' ? (I18N_WIN[lang] && I18N_WIN[lang][key]) || I18N_WIN.en[key] : null;
+  let s = win || (I18N[lang] && I18N[lang][key]) || I18N.en[key] || key;
   if (vars) for (const k in vars) s = s.replace('{' + k + '}', vars[k]);
   return s;
 }
@@ -482,6 +532,7 @@ function renderStatic() {
     const show = o.unreadable > 0 && !S.fdaHidden;
     $('#fdaBanner').hidden = !show;
     if (show) $('#fdaText').textContent = t('fda_text', { n: num(o.unreadable) });
+    $('#fdaBtn').hidden = OS === 'windows';
   }
 }
 
@@ -686,7 +737,7 @@ function renderCrumbs() {
   nav.innerHTML = '';
   (n.crumbs || []).forEach((c, i) => {
     if (i) nav.append(el('span', 'sep', '/'));
-    const label = c.name === '/' ? t('this_mac') : c.name === '~' ? '~ ' + t('home') : c.name;
+    const label = i === 0 && n.whole_mac ? t('this_mac') : c.name === '~' ? '~ ' + t('home') : c.name;
     const b = el('button', null, esc(label));
     b.onclick = () => navigate(c.id);
     nav.append(b);

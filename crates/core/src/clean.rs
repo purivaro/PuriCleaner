@@ -5,6 +5,7 @@ use std::fs;
 use std::io;
 use std::path::Path;
 
+#[cfg(target_os = "macos")]
 use trash::macos::{DeleteMethod, TrashContextExtMacos};
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -17,7 +18,9 @@ pub fn remove(path: &Path, mode: Mode) -> Result<(), String> {
     let md = fs::symlink_metadata(path).map_err(|e| e.to_string())?;
     match mode {
         Mode::Trash => {
+            #[allow(unused_mut)]
             let mut ctx = trash::TrashContext::default();
+            #[cfg(target_os = "macos")]
             ctx.set_delete_method(DeleteMethod::NsFileManager);
             ctx.delete(path).map_err(|e| e.to_string())
         }
@@ -32,7 +35,9 @@ pub fn remove(path: &Path, mode: Mode) -> Result<(), String> {
 /// Move to the Trash through Finder, which asks for the admin password when
 /// the item belongs to the system (most apps installed from the App Store).
 pub fn trash_with_finder(path: &Path) -> Result<(), String> {
+    #[allow(unused_mut)]
     let mut ctx = trash::TrashContext::default();
+    #[cfg(target_os = "macos")]
     ctx.set_delete_method(DeleteMethod::Finder);
     ctx.delete(path).map_err(|e| e.to_string())
 }
@@ -64,17 +69,23 @@ pub fn script(groups: &[ScriptGroup], thai: bool) -> String {
     let total: u64 = groups.iter().map(|g| g.size).sum();
     let count: usize = groups.iter().map(|g| g.items.len()).sum();
     let mut s = String::new();
-    s.push_str("#!/bin/bash\n");
+    if cfg!(windows) {
+        s.push_str("# PowerShell\n");
+    } else {
+        s.push_str("#!/bin/bash\n");
+    }
     if thai {
         s.push_str("# Puri Cleaner — สคริปต์ล้างพื้นที่\n");
         s.push_str(&format!("# รวม {} จาก {} รายการ\n", fmt_size(total), count));
-        s.push_str("# อ่านทุกบรรทัดก่อนรัน: rm -rf ลบถาวร ไม่ผ่านถังขยะ\n");
+        s.push_str("# อ่านทุกบรรทัดก่อนรัน: คำสั่งเหล่านี้ลบถาวร ไม่ผ่านถังขยะ\n");
     } else {
         s.push_str("# Puri Cleaner — cleanup script\n");
         s.push_str(&format!("# {} across {} items\n", fmt_size(total), count));
-        s.push_str("# Read every line before running: rm -rf deletes permanently, it skips the Trash.\n");
+        s.push_str("# Read every line before running: these commands delete permanently, skipping the Trash.\n");
     }
-    s.push_str("set -u\n");
+    if !cfg!(windows) {
+        s.push_str("set -u\n");
+    }
     for g in groups {
         s.push_str(&format!("\n# ── {} ({}) ", g.title, fmt_size(g.size)));
         s.push_str(&"─".repeat(40usize.saturating_sub(g.title.chars().count())));
@@ -86,6 +97,11 @@ pub fn script(groups: &[ScriptGroup], thai: bool) -> String {
             s.push_str(&format!("{line}   # {}\n", fmt_size(*size)));
         }
     }
-    s.push_str(if thai { "\necho \"เสร็จแล้ว\"\n" } else { "\necho \"Done.\"\n" });
+    s.push_str(match (cfg!(windows), thai) {
+        (true, true) => "\nWrite-Host \"เสร็จแล้ว\"\n",
+        (true, false) => "\nWrite-Host \"Done.\"\n",
+        (false, true) => "\necho \"เสร็จแล้ว\"\n",
+        (false, false) => "\necho \"Done.\"\n",
+    });
     s
 }

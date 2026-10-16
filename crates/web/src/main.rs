@@ -5,7 +5,6 @@
 //! token handed to the browser in the URL, so other web pages cannot ask it
 //! to delete anything.
 
-use std::io::Read;
 use std::path::PathBuf;
 
 use serde_json::Value;
@@ -16,12 +15,16 @@ const CSS: &str = include_str!("../../../ui/styles.css");
 const JS: &str = include_str!("../../../ui/app.js");
 const ICON: &[u8] = include_bytes!("../../../ui/icon.svg");
 
+/// 128 random bits from the OS (std seeds RandomState from the system RNG).
 fn token() -> String {
-    let mut b = [0u8; 16];
-    if let Ok(mut f) = std::fs::File::open("/dev/urandom") {
-        let _ = f.read_exact(&mut b);
-    }
-    b.iter().map(|x| format!("{x:02x}")).collect()
+    use std::hash::{BuildHasher, Hasher};
+    (0..2)
+        .map(|i| {
+            let mut h = std::collections::hash_map::RandomState::new().build_hasher();
+            h.write_u64(i);
+            format!("{:016x}", h.finish())
+        })
+        .collect()
 }
 
 fn header(k: &str, v: &str) -> Header {
@@ -54,6 +57,9 @@ fn main() {
     let url = format!("http://127.0.0.1:{port}/#t={token}");
     println!("Puri Cleaner: {url}");
     if open_browser {
+        #[cfg(windows)]
+        let _ = std::process::Command::new("explorer").arg(&url).spawn();
+        #[cfg(not(windows))]
         let _ = std::process::Command::new("open").arg(&url).spawn();
     }
 
