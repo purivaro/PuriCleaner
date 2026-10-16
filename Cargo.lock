@@ -2391,7 +2391,7 @@ dependencies = [
 
 [[package]]
 name = "puri-cleaner"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "puri_core",
  "serde_json",
@@ -2401,7 +2401,7 @@ dependencies = [
 
 [[package]]
 name = "puri-cleaner-web"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "puri_core",
  "serde_json",
@@ -2410,7 +2410,7 @@ dependencies = [
 
 [[package]]
 name = "puri_core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "libc",
  "rayon",

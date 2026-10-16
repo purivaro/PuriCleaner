@@ -52,6 +52,8 @@ jobs:
             $gb = { param($b) '{0:N1} GB' -f ($b / 1e9) }
             Write-Host "Disk: total $(& $gb $o.disk_total), free $(& $gb $o.disk_free), scanned $(& $gb $o.scanned), files $($o.files), unreadable(home) $($o.unreadable), $($o.scan_ms) ms, os=$($o.os)"
             if ($o.os -ne 'windows') { throw "os is $($o.os)" }
+            Write-Host "Elevated: $($o.elevated), unreadable folders (all): $($o.unreadable_all)"
+            if (-not $o.elevated) { Write-Host '::warning::runner is not elevated; admin-only suggestions are not exercised' }
 
             $root = Api node '{"id":0}'
             Write-Host 'Top level:'
@@ -71,6 +73,14 @@ jobs:
             $recs = Api recommendations
             Write-Host 'Recommendations:'
             foreach ($r in $recs) { Write-Host ("  {0,-7} {1,10} {2,4} items  {3}  [{4}]" -f $r.level, (& $gb $r.size), $r.items.Count, $r.title_en, (($r.items | ForEach-Object { $_.action.kind } | Sort-Object -Unique) -join ',')) }
+
+            $ws = $recs | Where-Object { $_.id -eq 'winsxs' }
+            if ($ws) { Write-Host "WinSxS (DISM estimate): $(& $gb $ws.size) — $($ws.items[0].label)" }
+            elseif ($o.elevated) { Write-Host 'WinSxS: DISM reports nothing to clean' }
+            foreach ($id in 'win-temp','win-logs','delivery-opt','patch-cache','windows-old') {
+              $r = $recs | Where-Object { $_.id -eq $id }
+              Write-Host ("  {0,-13} {1}" -f $id, $(if ($r) { "$(& $gb $r.size) in $($r.items.Count) items, action=$((@($r.items | ForEach-Object { $_.action.kind }) | Sort-Object -Unique) -join ',')" } else { '(nothing found)' }))
+            }
 
             $ids = @($recs | ForEach-Object { $_.items } | ForEach-Object { $_.id })
             if ($ids.Count -gt 0) {

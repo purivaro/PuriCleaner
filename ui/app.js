@@ -285,6 +285,13 @@ const I18N_WIN = {
     note_admin: 'อยู่นอกโฟลเดอร์ผู้ใช้ Windows จะขอสิทธิ์ผู้ดูแลระบบ (UAC) และจะลบถาวรเสมอ',
     note_finder: 'จะถูกย้ายไปถังรีไซเคิลเสมอ กู้คืนได้',
     fda_text: 'อ่านไม่ได้ {n} โฟลเดอร์ ถ้าเปิดโปรแกรมแบบ Run as administrator ตัวเลขจะครบขึ้น',
+    admin_text: 'อ่านไม่ได้ {n} โฟลเดอร์ (รวมโฟลเดอร์ระบบ เช่น C:\\Windows\\Temp) สแกนแบบผู้ดูแลระบบเพื่อเห็นครบและได้คำแนะนำเพิ่ม เช่น ล้าง WinSxS',
+    admin_button: 'สแกนแบบผู้ดูแลระบบ',
+    admin_relaunching: 'กำลังเปิดใหม่แบบผู้ดูแลระบบ…',
+    admin_relaunching_d: 'หน้าต่างนี้จะปิดเอง แล้ว Puri Cleaner จะเปิดขึ้นมาใหม่และสแกนอีกครั้ง',
+    admin_cancelled: 'ยกเลิกการขอสิทธิ์ผู้ดูแลระบบแล้ว',
+    as_admin: 'ผู้ดูแลระบบ',
+    scan_sysinfo: 'กำลังวิเคราะห์ WinSxS ด้วย DISM (อาจใช้ 1–2 นาที)…',
     script_text: 'คัดลอกไปวางใน PowerShell ได้ อ่านก่อนรันทุกครั้ง คำสั่งเหล่านี้ลบถาวร ไม่ผ่านถังรีไซเคิล',
     mode_trash: 'ย้ายไปถังรีไซเคิล',
     mode_trash_d: 'กู้คืนได้ แต่พื้นที่จะคืนเมื่อล้างถังรีไซเคิล',
@@ -307,6 +314,13 @@ const I18N_WIN = {
     note_admin: 'Outside your user folder: Windows will ask for administrator permission (UAC), and they are always deleted permanently.',
     note_finder: 'Always moved to the Recycle Bin, so you can restore them.',
     fda_text: '{n} folders could not be read. Run as administrator for complete numbers.',
+    admin_text: '{n} folders could not be read, including system ones such as C:\\Windows\\Temp. Scan as administrator to see everything and get more suggestions, like WinSxS cleanup.',
+    admin_button: 'Scan as administrator',
+    admin_relaunching: 'Reopening as administrator…',
+    admin_relaunching_d: 'This window closes by itself; Puri Cleaner opens again and rescans.',
+    admin_cancelled: 'Administrator permission was not granted.',
+    as_admin: 'administrator',
+    scan_sysinfo: 'Analyzing WinSxS with DISM (may take 1–2 minutes)…',
     script_text: 'Paste into PowerShell. Always read it first: these commands delete permanently and skip the Recycle Bin.',
     mode_trash: 'Move to Recycle Bin',
     mode_trash_d: 'Recoverable. Space comes back when you empty the Recycle Bin.',
@@ -528,11 +542,16 @@ function renderStatic() {
   $$('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
   const o = S.overview;
   if (o) {
-    $('#brandSub').textContent = t('scanned_in', { files: num(o.files), sec: (o.scan_ms / 1000).toFixed(1) });
-    const show = o.unreadable > 0 && !S.fdaHidden;
+    $('#brandSub').textContent = t('scanned_in', { files: num(o.files), sec: (o.scan_ms / 1000).toFixed(1) })
+      + (o.elevated ? ' · ' + t('as_admin') : '');
+    // Windows: offer an administrator rescan whenever anything (system
+    // folders included) was unreadable. macOS: Full Disk Access for home.
+    const win = OS === 'windows';
+    const missing = win ? (o.elevated ? 0 : o.unreadable_all) : o.unreadable;
+    const show = missing > 0 && !S.fdaHidden;
     $('#fdaBanner').hidden = !show;
-    if (show) $('#fdaText').textContent = t('fda_text', { n: num(o.unreadable) });
-    $('#fdaBtn').hidden = OS === 'windows';
+    if (show) $('#fdaText').textContent = t(win ? 'admin_text' : 'fda_text', { n: num(missing) });
+    $('#fdaBtn').textContent = t(win ? 'admin_button' : 'fda_button');
   }
 }
 
@@ -1218,7 +1237,16 @@ function bind() {
     for (const it of r.items) on ? S.sel.add(it.id) : S.sel.delete(it.id);
     selectionChanged();
   });
-  $('#fdaBtn').onclick = () => api('open_fda').catch(() => {});
+  $('#fdaBtn').onclick = async () => {
+    if (OS !== 'windows') { api('open_fda').catch(() => {}); return; }
+    try {
+      await api('relaunch_admin');
+      // This copy quits; the elevated one opens its own window.
+      openModal(`<h3 class="modal-title" id="modalTitle">${esc(t('admin_relaunching'))}</h3><p class="modal-text">${esc(t('admin_relaunching_d'))}</p>`);
+    } catch (e) {
+      toast(e.message === 'cancelled' ? t('admin_cancelled') : t('err_generic', { msg: e.message }));
+    }
+  };
   $('#fdaClose').onclick = () => { S.fdaHidden = true; $('#fdaBanner').hidden = true; };
   $('#modal').addEventListener('click', ev => {
     if (ev.target.id === 'modal' || ev.target.closest('[data-close]')) closeModal();

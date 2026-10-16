@@ -7,8 +7,17 @@ export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
 export LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 
 # macOS: one app for Apple Silicon and Intel.
+# Signed when APPLE_SIGNING_IDENTITY is set (e.g. "Developer ID Application: …"),
+# and notarized + stapled when PURI_NOTARY_PROFILE names a notarytool keychain
+# profile (xcrun notarytool store-credentials).
 rm -f target/universal-apple-darwin/release/bundle/dmg/*.dmg
 (cd src-tauri && npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin)
+DMG=$(ls target/universal-apple-darwin/release/bundle/dmg/*.dmg)
+if [ -n "${PURI_NOTARY_PROFILE:-}" ]; then
+  xcrun notarytool submit "$DMG" --keychain-profile "$PURI_NOTARY_PROFILE" --wait
+  xcrun stapler staple "$DMG"
+  spctl -a -vv -t install "$DMG"
+fi
 
 # Windows (cross-built with MinGW).
 ./scripts/build-windows.sh
