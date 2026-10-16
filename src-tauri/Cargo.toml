@@ -1,0 +1,12 @@
+[package]
+name = "puri-cleaner"
+version.workspace = true
+edition.workspace = true
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+puri_core = { path = "../crates/core" }
+serde_json = "1"
+tauri = { version = "2", features = [] }
