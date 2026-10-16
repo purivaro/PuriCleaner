@@ -155,5 +155,5 @@ jobs:
             # A tag with a suffix (v0.3.0-rc1) becomes a pre-release, so it
             # never takes over the releases/latest download links.
             pre=""; [[ "$TAG" == *-* ]] && pre="--prerelease"
-            gh release create "$TAG" PuriCleaner-* SHA256SUMS.txt --title "$TAG" --generate-notes $pre
+            gh release create "$TAG" PuriCleaner-* SHA256SUMS.txt --title "Puri Cleaner ${TAG#v}" --generate-notes $pre
           fi
