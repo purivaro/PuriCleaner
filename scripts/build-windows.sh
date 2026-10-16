@@ -8,9 +8,10 @@ export PATH="/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH"
 # Homebrew's makensis crashes (std::bad_alloc) under the C locale.
 export LC_ALL=en_US.UTF-8 LANG=en_US.UTF-8
 T=x86_64-pc-windows-gnu
+rm -f "target/$T/release/bundle/nsis/"*-setup.exe   # keep only this version's installer
 (cd src-tauri && npx --yes @tauri-apps/cli@2 build --target "$T")
 cargo build --release -p puri-cleaner-web --target "$T"
-mkdir -p dist/windows
+rm -rf dist/windows && mkdir -p dist/windows
 cp "target/$T/release/bundle/nsis/"*-setup.exe dist/windows/
 # Portable: the GNU build loads WebView2Loader.dll at runtime, so ship it alongside.
 P="dist/windows/Puri Cleaner portable"
