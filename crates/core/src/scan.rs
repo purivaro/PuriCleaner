@@ -339,6 +339,11 @@ fn system_roots(home: &Path) -> Vec<PathBuf> {
         .map(PathBuf::from)
         .collect();
     roots.extend(user_var_dir());
+    // Leftovers from Windows upgrades sit at the drive root.
+    #[cfg(windows)]
+    roots.extend(
+        ["Windows.old", "$Windows.~BT", "$Windows.~WS", "$WinREAgent"].iter().map(|n| system_root().join(n)),
+    );
     roots.sort();
     roots.dedup();
     roots.retain(|r| r.is_dir() && !r.starts_with(home) && !home.starts_with(r));

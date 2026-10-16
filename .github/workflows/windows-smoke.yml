@@ -1,0 +1,94 @@
+# Scan a real Windows machine with the browser build and check the results.
+# Read-only: it never calls "clean". Runs on pushes to this branch, on PRs
+# that touch the scanner, and by hand.
+name: Windows smoke test
+
+on:
+  push:
+    branches: ["ci/windows-smoke"]
+  pull_request:
+    paths: ["crates/**", ".github/workflows/windows-smoke.yml"]
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Unit tests
+        run: cargo test --release -p puri_core
+      - name: Build browser version
+        run: cargo build --release -p puri-cleaner-web
+      - name: Scan the whole PC
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:PURI_TOKEN = 'ci'
+          $server = Start-Process target\release\puri-cleaner-web.exe -ArgumentList '--no-open','--port','7171' -PassThru
+          Start-Sleep 2
+          function Api($cmd, $body = '{}') {
+            Invoke-RestMethod -Method Post -Uri "http://127.0.0.1:7171/api/$cmd" `
+              -Headers @{ 'X-Puri-Token' = 'ci' } -ContentType 'application/json' -Body $body
+          }
+          try {
+            # Token check: a request without it must be refused.
+            $denied = $false
+            try { Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:7171/api/status' -Body '{}' } catch { $denied = $true }
+            if (-not $denied) { throw 'API answered without a token' }
+
+            Api scan | Out-Null
+            $waited = 0
+            do {
+              Start-Sleep 5; $waited += 5
+              $s = Api status
+              Write-Host ("{0,4}s {1} files={2} dirs={3}" -f $waited, $s.phase, $s.files, $s.dirs)
+            } while ($s.phase -eq 'scanning' -and $waited -lt 1200)
+            if ($s.phase -ne 'ready') { throw "scan did not finish: phase=$($s.phase) error=$($s.error)" }
+
+            $o = Api overview
+            $gb = { param($b) '{0:N1} GB' -f ($b / 1e9) }
+            Write-Host "Disk: total $(& $gb $o.disk_total), free $(& $gb $o.disk_free), scanned $(& $gb $o.scanned), files $($o.files), unreadable(home) $($o.unreadable), $($o.scan_ms) ms, os=$($o.os)"
+            if ($o.os -ne 'windows') { throw "os is $($o.os)" }
+            Write-Host "Elevated: $($o.elevated), unreadable folders (all): $($o.unreadable_all)"
+            if (-not $o.elevated) { Write-Host '::warning::runner is not elevated; admin-only suggestions are not exercised' }
+
+            $root = Api node '{"id":0}'
+            Write-Host 'Top level:'
+            foreach ($c in $root.children) { Write-Host ("  {0,-28} {1,10}  {2}" -f $c.name, (& $gb $c.size), $c.kind) }
+            $win = $root.children | Where-Object { $_.name -eq 'C:\Windows' }
+            if (-not $win) { throw 'C:\Windows is missing from the map' }
+
+            # Hard links: Explorer-style totals count WinSxS twice; ours must not.
+            $naive = (Get-ChildItem C:\Windows -Recurse -File -Force -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum
+            Write-Host "C:\Windows: ours $(& $gb $win.size) vs naive sum of file lengths $(& $gb $naive)"
+            if ($win.size -ge $naive) { throw 'C:\Windows is not smaller than the naive total: hard links counted twice?' }
+
+            $w = Api node ("{""id"":$($win.id)}")
+            Write-Host 'Inside C:\Windows:'
+            foreach ($c in ($w.children | Select-Object -First 12)) { Write-Host ("  {0,-28} {1,10}" -f $c.name, (& $gb $c.size)) }
+
+            $recs = Api recommendations
+            Write-Host 'Recommendations:'
+            foreach ($r in $recs) { Write-Host ("  {0,-7} {1,10} {2,4} items  {3}  [{4}]" -f $r.level, (& $gb $r.size), $r.items.Count, $r.title_en, (($r.items | ForEach-Object { $_.action.kind } | Sort-Object -Unique) -join ',')) }
+
+            $ws = $recs | Where-Object { $_.id -eq 'winsxs' }
+            if ($ws) { Write-Host "WinSxS (DISM estimate): $(& $gb $ws.size) — $($ws.items[0].label)" }
+            elseif ($o.elevated) { Write-Host 'WinSxS: DISM reports nothing to clean' }
+            foreach ($id in 'win-temp','win-logs','delivery-opt','patch-cache','windows-old') {
+              $r = $recs | Where-Object { $_.id -eq $id }
+              Write-Host ("  {0,-13} {1}" -f $id, $(if ($r) { "$(& $gb $r.size) in $($r.items.Count) items, action=$((@($r.items | ForEach-Object { $_.action.kind }) | Sort-Object -Unique) -join ',')" } else { '(nothing found)' }))
+            }
+
+            $ids = @($recs | ForEach-Object { $_.items } | ForEach-Object { $_.id })
+            if ($ids.Count -gt 0) {
+              $script = (Api script (@{ items = $ids; lang = 'en' } | ConvertTo-Json -Compress)).script
+              Write-Host '--- script (first 25 lines) ---'
+              ($script -split "`n" | Select-Object -First 25) -join "`n" | Write-Host
+              if ($script -notmatch 'Remove-Item|Clear-RecycleBin|powercfg') { throw 'script has no PowerShell commands' }
+            }
+          } finally {
+            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+          }

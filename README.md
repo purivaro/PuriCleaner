@@ -13,13 +13,12 @@
 | Windows — เวอร์ชันเปิดในเบราว์เซอร์ | [PuriCleaner-web-windows.exe](https://github.com/purivaro/PuriCleaner/releases/latest/download/PuriCleaner-web-windows.exe) |
 
 ทุกเวอร์ชันและบันทึกการเปลี่ยนแปลงอยู่ที่หน้า [Releases](https://github.com/purivaro/PuriCleaner/releases)
+· [Code signing policy](#code-signing-policy) · [Privacy](#privacy)
 
 ### ติดตั้งบน Mac
 
 1. เปิด `PuriCleaner-mac.dmg` แล้วลาก **Puri Cleaner** ไปใส่โฟลเดอร์ Applications
-2. แอปยังไม่ได้เซ็นด้วย Apple Developer ID เปิดครั้งแรก macOS จะไม่ยอมให้เปิด ให้ไปที่
-   **System Settings › Privacy & Security** เลื่อนลงไปกด **Open Anyway** แล้วเปิดแอปอีกครั้ง
-   (หรือรันคำสั่ง `xattr -dr com.apple.quarantine "/Applications/Puri Cleaner.app"`)
+2. เปิดแอปได้เลย — เซ็นด้วย Developer ID และผ่านการตรวจ (notarize) ของ Apple แล้ว
 3. ครั้งแรก macOS จะถามสิทธิ์เข้าถึง Desktop / Documents / Downloads ให้กดอนุญาต
 4. ถ้าแอปบอกว่ามีโฟลเดอร์ที่อ่านไม่ได้ ให้กด **เปิดการตั้งค่า** แล้วเปิด Puri Cleaner ใน
    **Full Disk Access** ตัวเลขจะครบขึ้น
@@ -102,3 +101,34 @@ tag ที่มีขีด เช่น `v0.3.0-rc1` จะเป็น pre-re
 `./scripts/release.sh` ยังใช้ build เองในเครื่องได้เหมือนเดิม
 
 แก้ CSS/JS แล้วให้เพิ่มเลข `?v=` ใน `ui/index.html` ด้วย
+
+## Code signing policy
+
+- **macOS:** signed with Developer ID (Phra Anavach Purivaro, team 7ZFZ2CSF6M) and notarized by Apple.
+- **Windows:** Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
+  *(Windows signing is being set up; releases are signed once the SignPath Foundation application is approved.)*
+
+Only builds made by this repository's GitHub Actions workflow from the tagged source are signed,
+and every release is approved by hand before it is signed.
+
+Team roles:
+
+| Role | Members |
+|---|---|
+| Committers and reviewers | [Phra Anavach Purivaro (@purivaro)](https://github.com/purivaro) |
+| Approvers | [Phra Anavach Purivaro (@purivaro)](https://github.com/purivaro) |
+
+Changes from outside contributors are reviewed in pull requests before they are merged.
+
+## Privacy
+
+This program will not transfer any information to other networked systems unless specifically requested
+by the user or the person installing or operating it.
+
+Puri Cleaner only reads your disk to measure it and deletes only what you select. The browser version
+listens on `127.0.0.1` only. The Windows installer may download Microsoft's WebView2 runtime if it is
+missing; that download is covered by [Microsoft's privacy statement](https://privacy.microsoft.com/privacystatement).
+
+## License
+
+[MIT](LICENSE)

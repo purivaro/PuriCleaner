@@ -50,6 +50,8 @@ enum Find {
     RecycleBin,
     /// C:\hiberfil.sys, removed by turning hibernation off.
     Hibernation,
+    /// WinSxS superseded components, cleaned by DISM (estimate from DISM).
+    ComponentStore,
 }
 
 struct RuleDef {
@@ -817,6 +819,30 @@ const RULES: &[RuleDef] = &[
         find: ChildrenOf("/Windows/Temp", &[]),
     },
     RuleDef {
+        id: "win-logs",
+        level: Safe,
+        title: ["ล็อกเก่าของ Windows Update (CBS)", "Old Windows servicing logs (CBS)"],
+        desc: [
+            "ไฟล์ล็อกและไฟล์บีบอัดเก่าของการติดตั้งอัปเดต ไม่แตะ CBS.log ที่ใช้อยู่ ต้องใช้สิทธิ์ผู้ดูแลระบบ",
+            "Old update-servicing logs and their archives. The live CBS.log is kept. Needs administrator rights.",
+        ],
+        hint: "C:\\Windows\\Logs\\CBS",
+        command: None,
+        find: ChildrenOf("/Windows/Logs/CBS", &["CBS.log", "CbsPersist_"]),
+    },
+    RuleDef {
+        id: "winsxs",
+        level: Safe,
+        title: ["ส่วนประกอบเก่าของ Windows (WinSxS)", "Old Windows components (WinSxS)"],
+        desc: [
+            "ล้างไฟล์ระบบรุ่นเก่าที่ถูกอัปเดตแทนแล้ว ด้วยเครื่องมือ DISM ของ Windows (ไม่ลบไฟล์เอง) ขนาดเป็นค่าประมาณจาก DISM ใช้เวลาหลายนาที อัปเดตที่ติดตั้งแล้วยังถอนได้ตามปกติ",
+            "Removes superseded system components with Windows' own DISM tool (no files are deleted by hand). The size is DISM's estimate. Takes several minutes; installed updates can still be uninstalled.",
+        ],
+        hint: "C:\\Windows\\WinSxS — DISM /StartComponentCleanup",
+        command: Some("Dism.exe /Online /Cleanup-Image /StartComponentCleanup"),
+        find: ComponentStore,
+    },
+    RuleDef {
         id: "win-dumps",
         level: Safe,
         title: ["ไฟล์ dump ตอนเครื่องค้าง (จอฟ้า)", "System crash dumps"],
@@ -849,6 +875,42 @@ const RULES: &[RuleDef] = &[
         hint: "$Recycle.Bin",
         command: Some("Clear-RecycleBin -Force"),
         find: RecycleBin,
+    },
+    RuleDef {
+        id: "windows-old",
+        level: Review,
+        title: ["Windows เวอร์ชันก่อน (Windows.old)", "Previous Windows installation (Windows.old)"],
+        desc: [
+            "สำเนา Windows เดิมที่เก็บไว้หลังอัปเกรด ใช้สำหรับย้อนกลับเวอร์ชัน (Windows ลบเองหลัง 10 วัน) ถ้าเครื่องใช้งานได้ดีแล้วลบได้ ลบแล้วย้อนกลับไม่ได้",
+            "The old Windows kept after an upgrade so you can roll back (Windows removes it after 10 days). Safe to remove once the new version works; rollback is no longer possible afterwards.",
+        ],
+        hint: "C:\\Windows.old, $Windows.~BT",
+        command: None,
+        find: Paths(&["/Windows.old", "/$Windows.~BT", "/$Windows.~WS", "/$WinREAgent"]),
+    },
+    RuleDef {
+        id: "delivery-opt",
+        level: Review,
+        title: ["แคชการส่งอัปเดต (Delivery Optimization)", "Delivery Optimization cache"],
+        desc: [
+            "ไฟล์อัปเดตที่ Windows เก็บไว้แบ่งให้เครื่องอื่น ลบได้ ล้างด้วยคำสั่งของ Windows เอง",
+            "Update files Windows keeps to share with other PCs. Removed with Windows' own command.",
+        ],
+        hint: "Delivery Optimization",
+        command: Some("Delete-DeliveryOptimizationCache -Force"),
+        find: Paths(&["/Windows/ServiceProfiles/NetworkService/AppData/Local/Microsoft/Windows/DeliveryOptimization/Cache"]),
+    },
+    RuleDef {
+        id: "patch-cache",
+        level: Review,
+        title: ["แคชสำรองของแพตช์ ($PatchCache$)", "Patch baseline cache ($PatchCache$)"],
+        desc: [
+            "สำเนาไฟล์ต้นฉบับที่ Windows Installer เก็บไว้ตอนลงแพตช์ ลบได้ แต่ถ้าจะถอนแพตช์บางตัวทีหลังอาจต้องใช้ไฟล์ติดตั้งเดิม",
+            "Original files Windows Installer keeps when patching. Removable, but uninstalling some patches later may ask for the original installer.",
+        ],
+        hint: "C:\\Windows\\Installer\\$PatchCache$",
+        command: None,
+        find: Paths(&["/Windows/Installer/$PatchCache$"]),
     },
     RuleDef {
         id: "hibernation",
@@ -1269,6 +1331,28 @@ fn user_temp(tree: &Tree) -> Vec<u32> {
     out
 }
 
+/// Removal that needs more than deleting files.
+fn special_action(rule: &str, path: &std::path::Path) -> Option<Action> {
+    let p = path.display().to_string();
+    match rule {
+        // Owned by TrustedInstaller: take ownership, grant Administrators, then delete.
+        // These paths never contain spaces, so no quoting survives cmd and PowerShell.
+        "windows-old" => Some(Action::AdminCommand {
+            argv: vec![
+                "cmd.exe".into(),
+                "/c".into(),
+                format!(
+                    "takeown /F {p} /R /A /D Y >nul && icacls {p} /grant *S-1-5-32-544:F /T /C /Q >nul && rd /S /Q {p}"
+                ),
+            ],
+        }),
+        "delivery-opt" => Some(Action::AdminCommand {
+            argv: ["powershell", "-NoProfile", "-Command", "Delete-DeliveryOptimizationCache -Force"].map(String::from).to_vec(),
+        }),
+        _ => None,
+    }
+}
+
 /// Size of C:\hiberfil.sys. Read from the drive's listing, since the file
 /// itself cannot be opened while Windows runs.
 fn hiberfil_size() -> Option<u64> {
@@ -1327,7 +1411,7 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
             BrewOld => brew_old(tree),
             UnusedApps => unused_apps(tree, sys, &mut last_used),
             UserTemp => user_temp(tree),
-            Runtimes | RecycleBin | Hibernation => vec![],
+            Runtimes | RecycleBin | Hibernation | ComponentStore => vec![],
         };
 
         let mut items = Vec::new();
@@ -1343,6 +1427,23 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
                     last_used: None,
                     sims: None,
                     action: Action::EmptyRecycleBin,
+                });
+            }
+        }
+        if let (ComponentStore, Some(cs)) = (&def.find, &sys.component_store) {
+            if cs.estimate() > 0 {
+                items.push(Item {
+                    id: VIRTUAL + 0x0800_0002,
+                    path: crate::scan::system_root().join("Windows").join("WinSxS").display().to_string(),
+                    label: Some(format!("DISM /StartComponentCleanup · {} pkgs", cs.reclaimable_packages)),
+                    size: cs.estimate(),
+                    files: 0,
+                    newest: 0,
+                    last_used: None,
+                    sims: None,
+                    action: Action::AdminCommand {
+                        argv: ["Dism.exe", "/Online", "/Cleanup-Image", "/StartComponentCleanup", "/Quiet"].map(String::from).to_vec(),
+                    },
                 });
             }
         }
@@ -1401,6 +1502,8 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
             let path = tree.path(c);
             let action = if matches!(def.find, UnusedApps) {
                 Action::Finder
+            } else if let Some(a) = special_action(def.id, &path) {
+                a
             } else if owned_by_me(tree, &path) {
                 Action::Remove
             } else {

@@ -25,6 +25,69 @@ pub struct SysInfo {
     pub runtimes: Vec<Runtime>,
     /// App bundle -> last time it was opened (unix seconds, 0 if unknown).
     pub app_last_used: HashMap<PathBuf, i64>,
+    /// Running with administrator rights (Windows).
+    pub elevated: bool,
+    /// WinSxS analysis from DISM; only available when elevated.
+    pub component_store: Option<ComponentStore>,
+}
+
+/// What `DISM /AnalyzeComponentStore` reports about C:\Windows\WinSxS.
+#[derive(Clone, Debug, Default)]
+pub struct ComponentStore {
+    pub actual_size: u64,
+    pub backups: u64,
+    pub cache: u64,
+    pub reclaimable_packages: u32,
+    pub recommended: bool,
+}
+
+impl ComponentStore {
+    /// Rough size `StartComponentCleanup` can free: temporary data always,
+    /// plus superseded backups when DISM found packages to remove.
+    pub fn estimate(&self) -> u64 {
+        self.cache + if self.reclaimable_packages > 0 { self.backups } else { 0 }
+    }
+}
+
+/// "3.21 GB" / "150.00 MB" / "0 bytes" -> bytes (DISM uses 1024-based units).
+pub fn parse_dism_size(v: &str) -> Option<u64> {
+    let mut it = v.split_whitespace();
+    let n: f64 = it.next()?.replace(',', "").parse().ok()?;
+    let mul = match it.next().unwrap_or("bytes").to_ascii_lowercase().as_str() {
+        "kb" => 1024.0,
+        "mb" => 1024.0 * 1024.0,
+        "gb" => 1024.0 * 1024.0 * 1024.0,
+        "tb" => 1024.0 * 1024.0 * 1024.0 * 1024.0,
+        _ => 1.0,
+    };
+    Some((n * mul) as u64)
+}
+
+pub fn parse_dism(out: &str) -> ComponentStore {
+    let mut c = ComponentStore::default();
+    for line in out.lines() {
+        let Some((k, v)) = line.split_once(" : ") else { continue };
+        let (k, v) = (k.trim(), v.trim());
+        match k {
+            "Actual Size of Component Store" => c.actual_size = parse_dism_size(v).unwrap_or(0),
+            "Backups and Disabled Features" => c.backups = parse_dism_size(v).unwrap_or(0),
+            "Cache and Temporary Data" => c.cache = parse_dism_size(v).unwrap_or(0),
+            "Number of Reclaimable Packages" => c.reclaimable_packages = v.parse().unwrap_or(0),
+            "Component Store Cleanup Recommended" => c.recommended = v.eq_ignore_ascii_case("yes"),
+            _ => {}
+        }
+    }
+    c
+}
+
+#[cfg(windows)]
+pub fn is_elevated() -> bool {
+    unsafe { windows_sys::Win32::UI::Shell::IsUserAnAdmin() != 0 }
+}
+
+#[cfg(not(windows))]
+pub fn is_elevated() -> bool {
+    false
 }
 
 #[cfg(target_os = "macos")]
@@ -141,7 +204,25 @@ fn app_last_used(apps: &[PathBuf]) -> HashMap<PathBuf, i64> {
     m
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+pub fn gather(whole_mac: bool) -> SysInfo {
+    let elevated = is_elevated();
+    // DISM needs administrator rights and takes a minute or two.
+    let component_store = (whole_mac && elevated).then(|| {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        std::process::Command::new("Dism.exe")
+            .args(["/English", "/Online", "/Cleanup-Image", "/AnalyzeComponentStore"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| parse_dism(&String::from_utf8_lossy(&o.stdout)))
+    }).flatten();
+    SysInfo { elevated, component_store, ..Default::default() }
+}
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn gather(_whole_mac: bool) -> SysInfo {
     SysInfo::default()
 }
@@ -152,7 +233,24 @@ pub fn gather(whole_mac: bool) -> SysInfo {
         return SysInfo::default();
     }
     let apps = app_bundles();
-    SysInfo { runtimes: runtimes(), app_last_used: app_last_used(&apps) }
+    SysInfo { runtimes: runtimes(), app_last_used: app_last_used(&apps), ..Default::default() }
+}
+
+#[cfg(test)]
+mod dism_tests {
+    use super::*;
+
+    #[test]
+    fn parses_dism_report() {
+        let out = "Component Store (WinSxS) information:\r\n\r\nWindows Explorer Reported Size of Component Store : 10.52 GB\r\n\r\nActual Size of Component Store : 9.87 GB\r\n\r\n    Shared with Windows : 6.12 GB\r\n    Backups and Disabled Features : 3.21 GB\r\n    Cache and Temporary Data : 150.00 MB\r\n\r\nDate of Last Cleanup : 2026-09-01 10:00:00\r\n\r\nNumber of Reclaimable Packages : 2\r\nComponent Store Cleanup Recommended : Yes\r\n";
+        let c = parse_dism(out);
+        assert_eq!(c.reclaimable_packages, 2);
+        assert!(c.recommended);
+        assert_eq!(c.cache, 150 * 1024 * 1024);
+        assert_eq!(c.backups, (3.21 * 1024.0 * 1024.0 * 1024.0) as u64);
+        assert_eq!(c.estimate(), c.cache + c.backups);
+        assert_eq!(parse_dism_size("0 bytes"), Some(0));
+    }
 }
 
 #[cfg(all(test, target_os = "macos"))]
