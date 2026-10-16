@@ -26,6 +26,42 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      # Signing and notarization are optional: without the secrets (fork PRs, or
+      # before they are added) nothing is exported and the app builds unsigned.
+      # Only non-empty values reach Tauri, which would otherwise try to use them.
+      - name: Set up signing
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ]; then
+            echo "::warning::No signing secrets; building an unsigned app."
+            exit 0
+          fi
+          # Own keychain (Tauri's temporary one is gone after the build, and the
+          # DMG is signed after that).
+          kc="$RUNNER_TEMP/signing.keychain-db"
+          kp="$(uuidgen)"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$kp" "$kc"
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$kp" "$kc"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -f pkcs12 -A -T /usr/bin/codesign \
+            -P "$APPLE_CERTIFICATE_PASSWORD"
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$kp" "$kc" >/dev/null
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
+          echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY" >> "$GITHUB_ENV"
+          if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ] && [ -n "$APPLE_TEAM_ID" ]; then
+            { echo "APPLE_ID=$APPLE_ID"; echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+              echo "APPLE_TEAM_ID=$APPLE_TEAM_ID"; } >> "$GITHUB_ENV"
+          else
+            echo "::warning::No notarization secrets; the app is signed but not notarized."
+          fi
       - name: Build universal app
         working-directory: src-tauri
         run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin
@@ -33,6 +69,25 @@ jobs:
         run: |
           mkdir -p out
           cp target/universal-apple-darwin/release/bundle/dmg/*.dmg out/PuriCleaner-mac.dmg
+      # Tauri notarizes and staples the .app; the DMG around it gets its own
+      # signature and ticket so Gatekeeper accepts the download itself.
+      - name: Sign, notarize and check DMG
+        if: env.APPLE_SIGNING_IDENTITY != ''
+        run: |
+          dmg=out/PuriCleaner-mac.dmg
+          app="target/universal-apple-darwin/release/bundle/macos/Puri Cleaner.app"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$dmg"
+          if [ -z "$APPLE_ID" ]; then exit 0; fi
+          xcrun stapler validate "$app"
+          xcrun notarytool submit "$dmg" --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" --wait
+          xcrun stapler staple "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl -a -vv -t install "$dmg"
+      - name: Remove signing keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         with:
           name: macos

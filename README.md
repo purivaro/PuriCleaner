@@ -97,6 +97,8 @@ cd src-tauri && npx @tauri-apps/cli@2 dev              # แอปโหมด�
 GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)) จะ build Mac (universal) และ Windows (MSVC
 ไม่ต้องมี `WebView2Loader.dll` ข้างตัว exe) แล้วแนบไฟล์ทั้งหมดพร้อม `SHA256SUMS.txt` เข้า Release ของ tag นั้นเอง
 tag ที่มีขีด เช่น `v0.3.0-rc1` จะเป็น pre-release ไม่ทับลิงก์ดาวน์โหลดล่าสุด · กด Run workflow เองได้ถ้าอยากแค่ build ลองโดยไม่ออก release
+แอป Mac จะเซ็นและ notarize ให้เมื่อตั้ง secrets `APPLE_CERTIFICATE` `APPLE_CERTIFICATE_PASSWORD` `APPLE_SIGNING_IDENTITY`
+`APPLE_ID` `APPLE_PASSWORD` `APPLE_TEAM_ID` ไว้ใน repo (ถ้าไม่มีจะ build แบบไม่เซ็น)
 `./scripts/release.sh` ยังใช้ build เองในเครื่องได้เหมือนเดิม
 
 แก้ CSS/JS แล้วให้เพิ่มเลข `?v=` ใน `ui/index.html` ด้วย
