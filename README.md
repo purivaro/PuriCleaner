@@ -17,9 +17,7 @@
 ### ติดตั้งบน Mac
 
 1. เปิด `PuriCleaner-mac.dmg` แล้วลาก **Puri Cleaner** ไปใส่โฟลเดอร์ Applications
-2. แอปยังไม่ได้เซ็นด้วย Apple Developer ID เปิดครั้งแรก macOS จะไม่ยอมให้เปิด ให้ไปที่
-   **System Settings › Privacy & Security** เลื่อนลงไปกด **Open Anyway** แล้วเปิดแอปอีกครั้ง
-   (หรือรันคำสั่ง `xattr -dr com.apple.quarantine "/Applications/Puri Cleaner.app"`)
+2. เปิดแอปได้เลย — เซ็นด้วย Developer ID และผ่านการตรวจ (notarize) ของ Apple แล้ว
 3. ครั้งแรก macOS จะถามสิทธิ์เข้าถึง Desktop / Documents / Downloads ให้กดอนุญาต
 4. ถ้าแอปบอกว่ามีโฟลเดอร์ที่อ่านไม่ได้ ให้กด **เปิดการตั้งค่า** แล้วเปิด Puri Cleaner ใน
    **Full Disk Access** ตัวเลขจะครบขึ้น
