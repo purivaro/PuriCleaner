@@ -94,7 +94,9 @@ pub fn script(groups: &[ScriptGroup], thai: bool) -> String {
             s.push_str(&format!("# {} {}\n", if thai { "ทางเลือก:" } else { "Alternative:" }, cmd));
         }
         for (line, size) in &g.items {
-            s.push_str(&format!("{line}   # {}\n", fmt_size(*size)));
+            // A line may already end in a note ("# Run as administrator").
+            let sep = if line.contains("   # ") { ", " } else { "   # " };
+            s.push_str(&format!("{line}{sep}{}\n", fmt_size(*size)));
         }
     }
     s.push_str(match (cfg!(windows), thai) {
