@@ -103,6 +103,40 @@ fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
+/// Start this same program again with administrator rights (UAC), then quit.
+#[cfg(windows)]
+fn relaunch_admin() -> Result<Value, String> {
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::UI::Shell::ShellExecuteW;
+    let wide = |s: &std::ffi::OsStr| s.encode_wide().chain(std::iter::once(0)).collect::<Vec<u16>>();
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let params = std::env::args()
+        .skip(1)
+        .map(|a| if a.contains(' ') { format!("\"{a}\"") } else { a })
+        .collect::<Vec<_>>()
+        .join(" ");
+    let verb = wide("runas".as_ref());
+    let (exe_w, params_w) = (wide(exe.as_os_str()), wide(params.as_ref()));
+    const SW_SHOWNORMAL: i32 = 1;
+    let r = unsafe {
+        ShellExecuteW(std::ptr::null_mut(), verb.as_ptr(), exe_w.as_ptr(), params_w.as_ptr(), std::ptr::null(), SW_SHOWNORMAL)
+    };
+    // Values above 32 mean the new process started; otherwise UAC was declined or it failed.
+    if r as isize <= 32 {
+        return Err("cancelled".into());
+    }
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(400));
+        std::process::exit(0);
+    });
+    Ok(json!({ "relaunched": true }))
+}
+
+#[cfg(not(windows))]
+fn relaunch_admin() -> Result<Value, String> {
+    Err("only on Windows".into())
+}
+
 /// PowerShell single-quoted string.
 #[cfg(windows)]
 fn ps_quote(s: &str) -> String {
@@ -120,7 +154,7 @@ fn admin_remove(paths: &[PathBuf], _thai: bool) -> Result<(), String> {
 #[cfg(windows)]
 fn admin_command(argv: &[String], _thai: bool) -> Result<(), String> {
     let args = argv.iter().map(|a| ps_quote(a)).collect::<Vec<_>>().join(" ");
-    elevated(&format!("& {args}"))
+    elevated(&format!("& {args}; exit $LASTEXITCODE"))
 }
 
 /// Run PowerShell code in an elevated, hidden PowerShell and wait for it.
@@ -131,8 +165,9 @@ fn elevated(inner: &str) -> Result<(), String> {
         let utf16: Vec<u8> = inner.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
         base64(&utf16)
     };
+    // -PassThru + exit: report the elevated command's own exit code.
     let outer = format!(
-        "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-EncodedCommand','{encoded}'"
+        "$p = Start-Process powershell -Verb RunAs -Wait -PassThru -WindowStyle Hidden -ArgumentList '-NoProfile','-EncodedCommand','{encoded}'; exit $p.ExitCode"
     );
     use std::os::windows::process::CommandExt;
     const CREATE_NO_WINDOW: u32 = 0x0800_0000;
@@ -236,6 +271,7 @@ impl App {
                 self.start_clean(arg_ids(args), mode, thai)
             }
             "reveal" => self.reveal(arg_u32(args, "id").ok_or("missing id")?),
+            "relaunch_admin" => relaunch_admin(),
             "open_fda" => {
                 #[cfg(target_os = "macos")]
                 let _ = Command::new("open")
@@ -326,6 +362,9 @@ impl App {
             "home_size": tree.node(tree.home_id).size,
             "files": root.files,
             "unreadable": tree.unreadable,
+            // Folders anywhere (system ones too) that could not be read.
+            "unreadable_all": tree.nodes.iter().filter(|n| n.flags & crate::tree::flag::UNREADABLE != 0).count(),
+            "elevated": crate::sysinfo::is_elevated(),
             "scan_ms": st.scan_ms,
             "cats": cats,
         }))
@@ -592,7 +631,14 @@ impl App {
                         }),
                     Action::Finder => clean::trash_with_finder(&j.path),
                     Action::EmptyRecycleBin => crate::disk::empty_recycle_bin(),
-                    Action::AdminCommand { argv } => admin_command(argv, thai),
+                    // A tool can report success and still leave files behind; check.
+                    Action::AdminCommand { argv } => admin_command(argv, thai).and_then(|()| {
+                        if j.id < VIRTUAL && j.path.symlink_metadata().is_ok() {
+                            Err("still there after the command".into())
+                        } else {
+                            Ok(())
+                        }
+                    }),
                     _ => clean::remove(&j.path, mode),
                 };
                 let to_trash = matches!(j.action, Action::Finder) || (j.action == Action::Remove && mode == Mode::Trash);

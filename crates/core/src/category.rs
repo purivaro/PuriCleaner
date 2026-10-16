@@ -25,6 +25,10 @@ const SYSTEM: &[(&str, u8)] = &[
     ("ProgramData", SYS),
     ("ProgramData/Microsoft/Windows/WER", SYS),
     ("Windows", SYS),
+    ("Windows.old", SYS),
+    ("$Windows.~BT", SYS),
+    ("$Windows.~WS", SYS),
+    ("$WinREAgent", SYS),
 ];
 
 /// Explicit groups by home-relative path on Windows.
