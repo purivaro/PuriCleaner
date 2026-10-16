@@ -1,0 +1,104 @@
+# Build every download and attach it to the GitHub Release for the tag.
+# Asset names must stay stable: README links to releases/latest/download/<name>.
+# Run by hand (workflow_dispatch), or open a PR that changes this file, to build
+# without publishing; the files are then only kept as workflow artifacts.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths: [".github/workflows/release.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build universal app
+        working-directory: src-tauri
+        run: npx --yes @tauri-apps/cli@2 build --target universal-apple-darwin
+      - name: Collect
+        run: |
+          mkdir -p out
+          cp target/universal-apple-darwin/release/bundle/dmg/*.dmg out/PuriCleaner-mac.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: out/*
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      # MSVC links WebView2Loader statically, so the portable exe needs no DLL beside it.
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build app and installer
+        working-directory: src-tauri
+        run: npx --yes @tauri-apps/cli@2 build
+      - name: Build browser version
+        run: cargo build --release -p puri-cleaner-web
+      - name: Collect
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force out | Out-Null
+          $setup = Get-ChildItem target/release/bundle/nsis/*-setup.exe
+          if ($setup.Count -ne 1) { throw "expected one installer, found $($setup.Count)" }
+          Copy-Item $setup.FullName out/PuriCleaner-windows-setup.exe
+          $p = "Puri Cleaner portable"
+          New-Item -ItemType Directory -Force $p | Out-Null
+          Copy-Item target/release/puri-cleaner.exe "$p/Puri Cleaner.exe"
+          Compress-Archive -Path $p -DestinationPath out/PuriCleaner-windows-portable.zip
+          Copy-Item target/release/puri-cleaner-web.exe out/PuriCleaner-web-windows.exe
+          Get-ChildItem out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    needs: [macos, windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release
+          merge-multiple: true
+      - name: Checksums
+        working-directory: release
+        run: sha256sum PuriCleaner-* > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Create or update release
+        working-directory: release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" PuriCleaner-* SHA256SUMS.txt --clobber
+          else
+            # A tag with a suffix (v0.3.0-rc1) becomes a pre-release, so it
+            # never takes over the releases/latest download links.
+            pre=""; [[ "$TAG" == *-* ]] && pre="--prerelease"
+            gh release create "$TAG" PuriCleaner-* SHA256SUMS.txt --title "$TAG" --generate-notes $pre
+          fi

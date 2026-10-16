@@ -31,7 +31,7 @@
    (ขึ้นเพราะยังไม่ได้เซ็นโค้ด)
 3. เปิดจากเมนู Start พิมพ์ "Puri Cleaner" — ถอนการติดตั้งได้ที่ Settings › Apps
 
-แบบ portable: แตกไฟล์ zip แล้วเปิด `Puri Cleaner.exe` (เก็บ `WebView2Loader.dll` ไว้ในโฟลเดอร์เดียวกัน)
+แบบ portable: แตกไฟล์ zip แล้วเปิด `Puri Cleaner.exe`
 แอปใช้ WebView2 ที่มีใน Windows 10/11 อยู่แล้ว ถ้าเครื่องไม่มี ตัวติดตั้งจะดาวน์โหลดให้
 
 ## ทำอะไรได้บ้าง
@@ -92,5 +92,11 @@ cd src-tauri && npx @tauri-apps/cli@2 dev              # แอปโหมด�
 ```
 
 สร้างเวอร์ชัน Windows จาก Mac ได้ (MinGW): `rustup target add x86_64-pc-windows-gnu` และ `brew install mingw-w64 nsis`
+
+**ออก release:** แก้เลขเวอร์ชันใน `Cargo.toml` และ `src-tauri/tauri.conf.json` แล้ว push tag เช่น `git tag v0.3.0 && git push origin v0.3.0`
+GitHub Actions ([`.github/workflows/release.yml`](.github/workflows/release.yml)) จะ build Mac (universal) และ Windows (MSVC
+ไม่ต้องมี `WebView2Loader.dll` ข้างตัว exe) แล้วแนบไฟล์ทั้งหมดพร้อม `SHA256SUMS.txt` เข้า Release ของ tag นั้นเอง
+tag ที่มีขีด เช่น `v0.3.0-rc1` จะเป็น pre-release ไม่ทับลิงก์ดาวน์โหลดล่าสุด · กด Run workflow เองได้ถ้าอยากแค่ build ลองโดยไม่ออก release
+`./scripts/release.sh` ยังใช้ build เองในเครื่องได้เหมือนเดิม
 
 แก้ CSS/JS แล้วให้เพิ่มเลข `?v=` ใน `ui/index.html` ด้วย
