@@ -113,7 +113,19 @@ fn ps_quote(s: &str) -> String {
 #[cfg(windows)]
 fn admin_remove(paths: &[PathBuf], _thai: bool) -> Result<(), String> {
     let list = paths.iter().map(|p| ps_quote(&p.to_string_lossy())).collect::<Vec<_>>().join(",");
-    let inner = format!("Remove-Item -LiteralPath {list} -Recurse -Force -ErrorAction SilentlyContinue");
+    elevated(&format!("Remove-Item -LiteralPath {list} -Recurse -Force -ErrorAction SilentlyContinue"))
+}
+
+/// Run a program as administrator (UAC prompt).
+#[cfg(windows)]
+fn admin_command(argv: &[String], _thai: bool) -> Result<(), String> {
+    let args = argv.iter().map(|a| ps_quote(a)).collect::<Vec<_>>().join(" ");
+    elevated(&format!("& {args}"))
+}
+
+/// Run PowerShell code in an elevated, hidden PowerShell and wait for it.
+#[cfg(windows)]
+fn elevated(inner: &str) -> Result<(), String> {
     // Encode the inner command so no quoting survives two shells.
     let encoded = {
         let utf16: Vec<u8> = inner.encode_utf16().flat_map(|u| u.to_le_bytes()).collect();
@@ -122,8 +134,11 @@ fn admin_remove(paths: &[PathBuf], _thai: bool) -> Result<(), String> {
     let outer = format!(
         "Start-Process powershell -Verb RunAs -Wait -WindowStyle Hidden -ArgumentList '-NoProfile','-EncodedCommand','{encoded}'"
     );
+    use std::os::windows::process::CommandExt;
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
     let out = Command::new("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &outer])
+        .creation_flags(CREATE_NO_WINDOW)
         .output()
         .map_err(|e| e.to_string())?;
     if out.status.success() {
@@ -154,10 +169,18 @@ fn base64(data: &[u8]) -> String {
 /// Delete paths as root, after macOS asks for the admin password once.
 #[cfg(not(windows))]
 fn admin_remove(paths: &[PathBuf], thai: bool) -> Result<(), String> {
-    let cmd = format!(
-        "/bin/rm -rf -- {}",
-        paths.iter().map(|p| sh_quote(&p.to_string_lossy())).collect::<Vec<_>>().join(" ")
-    );
+    let list = paths.iter().map(|p| sh_quote(&p.to_string_lossy())).collect::<Vec<_>>().join(" ");
+    as_root(&format!("/bin/rm -rf -- {list}"), thai)
+}
+
+#[cfg(not(windows))]
+fn admin_command(argv: &[String], thai: bool) -> Result<(), String> {
+    as_root(&argv.iter().map(|a| sh_quote(a)).collect::<Vec<_>>().join(" "), thai)
+}
+
+/// Run a shell command as root through the macOS password dialog.
+#[cfg(not(windows))]
+fn as_root(cmd: &str, thai: bool) -> Result<(), String> {
     let prompt = if thai {
         "Puri Cleaner ต้องการลบไฟล์ของระบบที่คุณเลือก"
     } else {
@@ -440,6 +463,7 @@ impl App {
         match &it.action {
             Action::Command { argv } => argv.iter().map(|a| if a.contains(' ') { ps_quote(a) } else { a.clone() }).collect::<Vec<_>>().join(" "),
             Action::EmptyRecycleBin => "Clear-RecycleBin -Force".into(),
+            Action::AdminCommand { argv } => format!("{}   # Run as administrator", argv.join(" ")),
             Action::Admin => format!("Remove-Item -LiteralPath {} -Recurse -Force   # Run as administrator", path(it.id)),
             Action::Remove | Action::Finder => format!("Remove-Item -LiteralPath {} -Recurse -Force", path(it.id)),
         }
@@ -459,6 +483,7 @@ impl App {
             Action::Command { argv } => argv.iter().map(|a| if a.contains(' ') { sh_quote(a) } else { a.clone() }).collect::<Vec<_>>().join(" "),
             Action::Admin => format!("sudo rm -rf -- {}", quote(&tree.path(it.id))),
             Action::EmptyRecycleBin => "# (Windows only)".into(),
+            Action::AdminCommand { argv } => format!("sudo {}", argv.iter().map(|a| sh_quote(a)).collect::<Vec<_>>().join(" ")),
             Action::Remove | Action::Finder => format!("rm -rf -- {}", quote(&tree.path(it.id))),
         }
     }
@@ -567,6 +592,7 @@ impl App {
                         }),
                     Action::Finder => clean::trash_with_finder(&j.path),
                     Action::EmptyRecycleBin => crate::disk::empty_recycle_bin(),
+                    Action::AdminCommand { argv } => admin_command(argv, thai),
                     _ => clean::remove(&j.path, mode),
                 };
                 let to_trash = matches!(j.action, Action::Finder) || (j.action == Action::Remove && mode == Mode::Trash);

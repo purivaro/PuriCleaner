@@ -105,9 +105,23 @@ struct SDir {
     big: Vec<SFile>,
 }
 
+/// File IDs already counted, split across locks so 32 threads rarely wait.
+struct Seen(Vec<Mutex<HashSet<u64>>>);
+
+impl Seen {
+    fn new() -> Self {
+        Seen((0..64).map(|_| Mutex::new(HashSet::new())).collect())
+    }
+    /// True the first time an ID is seen.
+    fn first(&self, id: u64) -> bool {
+        let shard = (id.wrapping_mul(0x9E37_79B9_7F4A_7C15) >> 58) as usize;
+        self.0[shard].lock().unwrap().insert(id)
+    }
+}
+
 struct Ctx<'a> {
     prog: &'a Progress,
-    seen_links: Mutex<HashSet<u64>>,
+    seen_links: Seen,
     /// Other volumes mounted inside the scanned folders (simulator runtimes,
     /// disk images). Their bytes are not on this disk, so they are skipped.
     mounts: HashSet<PathBuf>,
@@ -188,7 +202,7 @@ fn scan_dir(path: &Path, name: Box<str>, ctx: &Ctx) -> SDir {
         }
         let mut alloc = e.alloc;
         if e.kind == Kind::File && e.nlink > 1 {
-            let first = ctx.seen_links.lock().unwrap().insert(e.fileid);
+            let first = ctx.seen_links.first(e.fileid);
             if !first {
                 alloc = 0;
             }
@@ -276,7 +290,7 @@ pub fn measure(path: &Path) -> (u64, u64) {
         return (bytes, 1);
     }
     let prog = Progress::default();
-    let ctx = Ctx { prog: &prog, seen_links: Mutex::new(HashSet::new()), mounts: foreign_mounts() };
+    let ctx = Ctx { prog: &prog, seen_links: Seen::new(), mounts: foreign_mounts() };
     let d = scan_dir(path, "".into(), &ctx);
     (d.size, d.files)
 }
@@ -314,7 +328,7 @@ pub fn system_root() -> PathBuf {
 /// Folders scanned in whole-computer mode, besides home.
 fn system_roots(home: &Path) -> Vec<PathBuf> {
     #[cfg(windows)]
-    let mut roots: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "ProgramData"]
+    let mut roots: Vec<PathBuf> = ["ProgramFiles", "ProgramFiles(x86)", "ProgramData", "SystemRoot"]
         .iter()
         .filter_map(std::env::var_os)
         .map(PathBuf::from)
@@ -353,7 +367,7 @@ fn sum(name: Box<str>, dirs: Vec<SDir>) -> SDir {
 /// folders that hold apps, developer tools and Homebrew.
 pub fn scan(single: Option<&Path>, home: &Path, prog: &Progress) -> std::io::Result<Tree> {
     forbid_cloud_downloads();
-    let ctx = Ctx { prog, seen_links: Mutex::new(HashSet::new()), mounts: foreign_mounts() };
+    let ctx = Ctx { prog, seen_links: Seen::new(), mounts: foreign_mounts() };
     // Deep trees (nested node_modules) recurse a lot; give workers room.
     // The walk waits on the file system more than on the CPU, so use more
     // threads than cores to keep the SSD busy.

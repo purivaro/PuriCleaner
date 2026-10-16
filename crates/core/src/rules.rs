@@ -48,6 +48,8 @@ enum Find {
     UserTemp,
     /// The Windows Recycle Bin (measured and emptied through the shell).
     RecycleBin,
+    /// C:\hiberfil.sys, removed by turning hibernation off.
+    Hibernation,
 }
 
 struct RuleDef {
@@ -791,6 +793,42 @@ const RULES: &[RuleDef] = &[
         ]),
     },
     RuleDef {
+        id: "win-update",
+        level: Safe,
+        title: ["ไฟล์อัปเดต Windows ที่ดาวน์โหลดไว้", "Downloaded Windows updates"],
+        desc: [
+            "ไฟล์ติดตั้งอัปเดตที่ Windows ใช้เสร็จแล้ว ถ้ากำลังอัปเดตอยู่ บางไฟล์จะลบไม่ได้ ต้องกดยืนยันสิทธิ์ผู้ดูแลระบบ",
+            "Update packages Windows has already installed. Some files stay locked while an update is running. Needs administrator permission.",
+        ],
+        hint: "C:\\Windows\\SoftwareDistribution\\Download",
+        command: None,
+        find: ChildrenOf("/Windows/SoftwareDistribution/Download", &[]),
+    },
+    RuleDef {
+        id: "win-temp",
+        level: Safe,
+        title: ["ไฟล์ชั่วคราวของ Windows", "Windows temporary files"],
+        desc: [
+            "ไฟล์ใน C:\\Windows\\Temp ที่ตัวติดตั้งและบริการของระบบทิ้งไว้ ไฟล์ที่ใช้อยู่จะข้ามไปเอง",
+            "Files left in C:\\Windows\\Temp by installers and system services. Files in use are skipped.",
+        ],
+        hint: "C:\\Windows\\Temp",
+        command: None,
+        find: ChildrenOf("/Windows/Temp", &[]),
+    },
+    RuleDef {
+        id: "win-dumps",
+        level: Safe,
+        title: ["ไฟล์ dump ตอนเครื่องค้าง (จอฟ้า)", "System crash dumps"],
+        desc: [
+            "ไฟล์ที่ Windows บันทึกตอนเครื่องค้างหรือจอฟ้า ใช้วิเคราะห์ปัญหาเท่านั้น",
+            "Memory dumps Windows wrote after a crash or blue screen. Only useful for diagnosing it.",
+        ],
+        hint: "C:\\Windows\\Minidump, MEMORY.DMP",
+        command: None,
+        find: Paths(&["/Windows/Minidump", "/Windows/LiveKernelReports", "/Windows/MEMORY.DMP"]),
+    },
+    RuleDef {
         id: "app-logs",
         level: Safe,
         title: ["ไฟล์ล็อกของ VS Code / Cursor", "VS Code & Cursor logs"],
@@ -811,6 +849,18 @@ const RULES: &[RuleDef] = &[
         hint: "$Recycle.Bin",
         command: Some("Clear-RecycleBin -Force"),
         find: RecycleBin,
+    },
+    RuleDef {
+        id: "hibernation",
+        level: Review,
+        title: ["ไฟล์ไฮเบอร์เนต (hiberfil.sys)", "Hibernation file (hiberfil.sys)"],
+        desc: [
+            "พื้นที่ที่ Windows จองไว้สำหรับโหมด Hibernate และ Fast Startup ถ้าปิด จะได้พื้นที่คืน แต่เปิดเครื่องจากปิดสนิทช้าลงเล็กน้อย เปิดกลับได้ด้วย powercfg /hibernate on",
+            "Space Windows reserves for Hibernate and Fast Startup. Turning it off frees the space; cold boots get slightly slower. Undo with powercfg /hibernate on.",
+        ],
+        hint: "C:\\hiberfil.sys",
+        command: Some("powercfg /hibernate off"),
+        find: Hibernation,
     },
     RuleDef {
         id: "android",
@@ -955,6 +1005,8 @@ pub enum Action {
     Command { argv: Vec<String> },
     /// Empty the Windows Recycle Bin.
     EmptyRecycleBin,
+    /// Run a tool as administrator (UAC on Windows, password on macOS).
+    AdminCommand { argv: Vec<String> },
 }
 
 /// Ids at or above this are not tree nodes.
@@ -1217,6 +1269,19 @@ fn user_temp(tree: &Tree) -> Vec<u32> {
     out
 }
 
+/// Size of C:\hiberfil.sys. Read from the drive's listing, since the file
+/// itself cannot be opened while Windows runs.
+fn hiberfil_size() -> Option<u64> {
+    let root = crate::scan::system_root();
+    std::fs::read_dir(&root)
+        .ok()?
+        .flatten()
+        .find(|e| e.file_name().eq_ignore_ascii_case("hiberfil.sys"))
+        .and_then(|e| e.metadata().ok())
+        .map(|m| m.len())
+        .filter(|&n| n > 0)
+}
+
 /// Windows: anything outside the user's profile needs elevation to delete.
 #[cfg(windows)]
 fn owned_by_me(tree: &Tree, path: &std::path::Path) -> bool {
@@ -1245,7 +1310,7 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
     for def in RULES {
         let candidates: Vec<u32> = match &def.find {
             Paths(ps) => ps.iter().flat_map(|p| glob(tree, p)).collect(),
-            ChildrenOf(p, skip) => match tree.lookup(p) {
+            ChildrenOf(p, skip) => match glob(tree, p).into_iter().next() {
                 Some(dir) => tree
                     .node(dir)
                     .children
@@ -1262,7 +1327,7 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
             BrewOld => brew_old(tree),
             UnusedApps => unused_apps(tree, sys, &mut last_used),
             UserTemp => user_temp(tree),
-            Runtimes | RecycleBin => vec![],
+            Runtimes | RecycleBin | Hibernation => vec![],
         };
 
         let mut items = Vec::new();
@@ -1278,6 +1343,21 @@ pub fn recommend(tree: &Tree, sys: &SysInfo) -> Vec<Recommendation> {
                     last_used: None,
                     sims: None,
                     action: Action::EmptyRecycleBin,
+                });
+            }
+        }
+        if matches!(def.find, Hibernation) {
+            if let Some(size) = hiberfil_size() {
+                items.push(Item {
+                    id: VIRTUAL + 0x0800_0001,
+                    path: crate::scan::system_root().join("hiberfil.sys").display().to_string(),
+                    label: None,
+                    size,
+                    files: 1,
+                    newest: 0,
+                    last_used: None,
+                    sims: None,
+                    action: Action::AdminCommand { argv: ["powercfg", "/hibernate", "off"].map(String::from).to_vec() },
                 });
             }
         }

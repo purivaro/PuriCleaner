@@ -5,8 +5,9 @@
 //! millions of files that is the difference between minutes and seconds.
 //! Volumes that do not support it fall back to `read_dir`.
 //!
-//! Windows: `read_dir` already gets size, time and attributes for a whole
-//! directory from FindFirstFile/FindNextFile, so nothing extra is needed.
+//! Windows: `GetFileInformationByHandleEx(FileIdBothDirectoryInfo)` returns
+//! many entries per call with their allocated size and file ID, so hard
+//! links (all over C:\Windows\WinSxS) can be counted once.
 
 use std::fs;
 use std::io;
@@ -215,7 +216,102 @@ mod bulk {
 #[cfg(target_os = "macos")]
 pub use bulk::list;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(windows)]
+mod bulk {
+    use super::*;
+    use std::os::windows::ffi::OsStrExt;
+    use windows_sys::Win32::Foundation::{CloseHandle, GetLastError, ERROR_NO_MORE_FILES, INVALID_HANDLE_VALUE};
+    use windows_sys::Win32::Storage::FileSystem::{
+        CreateFileW, FileIdBothDirectoryInfo, GetFileInformationByHandleEx, FILE_ATTRIBUTE_DIRECTORY,
+        FILE_ATTRIBUTE_REPARSE_POINT, FILE_FLAG_BACKUP_SEMANTICS, FILE_ID_BOTH_DIR_INFO, FILE_LIST_DIRECTORY,
+        FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING,
+    };
+
+    pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
+        let wide: Vec<u16> = path.as_os_str().encode_wide().chain(std::iter::once(0)).collect();
+        let h = unsafe {
+            CreateFileW(
+                wide.as_ptr(),
+                FILE_LIST_DIRECTORY,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                std::ptr::null(),
+                OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS,
+                std::ptr::null_mut(),
+            )
+        };
+        if h == INVALID_HANDLE_VALUE {
+            return Err(io::Error::last_os_error());
+        }
+        struct Guard(windows_sys::Win32::Foundation::HANDLE);
+        impl Drop for Guard {
+            fn drop(&mut self) {
+                unsafe { CloseHandle(self.0) };
+            }
+        }
+        let h = Guard(h);
+
+        // u64 backing keeps the entries 8-byte aligned.
+        let mut buf = vec![0u64; 64 * 1024 / 8];
+        let mut out = Vec::new();
+        loop {
+            let ok = unsafe {
+                GetFileInformationByHandleEx(h.0, FileIdBothDirectoryInfo, buf.as_mut_ptr().cast(), (buf.len() * 8) as u32)
+            };
+            if ok == 0 {
+                let err = unsafe { GetLastError() };
+                if err == ERROR_NO_MORE_FILES {
+                    break;
+                }
+                // Not supported here (e.g. some network shares): plain listing.
+                if out.is_empty() {
+                    return list_slow(path);
+                }
+                return Err(io::Error::from_raw_os_error(err as i32));
+            }
+            let base = buf.as_ptr() as *const u8;
+            let mut off = 0usize;
+            loop {
+                let info = unsafe { &*(base.add(off) as *const FILE_ID_BOTH_DIR_INFO) };
+                let name_len = info.FileNameLength as usize / 2;
+                let name_ptr = unsafe { (info as *const FILE_ID_BOTH_DIR_INFO as *const u8).add(std::mem::offset_of!(FILE_ID_BOTH_DIR_INFO, FileName)) } as *const u16;
+                let name = String::from_utf16_lossy(unsafe { std::slice::from_raw_parts(name_ptr, name_len) });
+                if name != "." && name != ".." {
+                    let attrs = info.FileAttributes;
+                    let kind = if attrs & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+                        Kind::Link
+                    } else if attrs & FILE_ATTRIBUTE_DIRECTORY != 0 {
+                        Kind::Dir
+                    } else {
+                        Kind::File
+                    };
+                    let alloc = if attrs & CLOUD_ONLY != 0 { 0 } else { info.AllocationSize.max(0) as u64 };
+                    out.push(Entry {
+                        name: name.into(),
+                        kind,
+                        alloc,
+                        mtime: info.LastWriteTime / 10_000_000 - 11_644_473_600,
+                        // Link counts are not listed; treat every file as
+                        // possibly linked and let the scan dedupe by ID.
+                        nlink: 2,
+                        fileid: info.FileId as u64,
+                        flags: attrs,
+                    });
+                }
+                if info.NextEntryOffset == 0 {
+                    break;
+                }
+                off += info.NextEntryOffset as usize;
+            }
+        }
+        Ok(out)
+    }
+}
+
+#[cfg(windows)]
+pub use bulk::list;
+
+#[cfg(not(any(target_os = "macos", windows)))]
 pub fn list(path: &Path) -> io::Result<Vec<Entry>> {
     list_slow(path)
 }

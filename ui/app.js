@@ -280,8 +280,8 @@ const I18N_WIN = {
     lg_system: 'Windows และอื่น ๆ',
     reveal: 'เปิดใน File Explorer',
     this_mac: 'PC เครื่องนี้',
-    macos_tile: 'Windows และพื้นที่ที่อ่านไม่ได้',
-    macos_tip: 'ตัวระบบ Windows, ไฟล์ page/hibernate, จุดคืนค่าระบบ และโฟลเดอร์ที่ไม่มีสิทธิ์อ่าน ส่วนนี้ลบเองไม่ได้ (ใช้ Disk Cleanup ของ Windows)',
+    macos_tile: 'ไฟล์ระบบและพื้นที่ที่อ่านไม่ได้',
+    macos_tip: 'pagefile.sys, hiberfil.sys, จุดคืนค่าระบบ (System Restore) และโฟลเดอร์ที่ต้องใช้สิทธิ์ผู้ดูแลระบบถึงจะอ่านได้ ถ้าเปิดโปรแกรมแบบ Run as administrator จะเห็นละเอียดขึ้น',
     note_admin: 'อยู่นอกโฟลเดอร์ผู้ใช้ Windows จะขอสิทธิ์ผู้ดูแลระบบ (UAC) และจะลบถาวรเสมอ',
     note_finder: 'จะถูกย้ายไปถังรีไซเคิลเสมอ กู้คืนได้',
     fda_text: 'อ่านไม่ได้ {n} โฟลเดอร์ ถ้าเปิดโปรแกรมแบบ Run as administrator ตัวเลขจะครบขึ้น',
@@ -302,8 +302,8 @@ const I18N_WIN = {
     lg_system: 'Windows & other',
     reveal: 'Show in File Explorer',
     this_mac: 'This PC',
-    macos_tile: 'Windows & unreadable space',
-    macos_tip: 'Windows itself, page and hibernation files, restore points and folders we cannot read. Use Windows Disk Cleanup for these.',
+    macos_tile: 'System files & unreadable space',
+    macos_tip: 'pagefile.sys, hiberfil.sys, System Restore points and folders that need administrator rights to read. Run as administrator to see more.',
     note_admin: 'Outside your user folder: Windows will ask for administrator permission (UAC), and they are always deleted permanently.',
     note_finder: 'Always moved to the Recycle Bin, so you can restore them.',
     fda_text: '{n} folders could not be read. Run as administrator for complete numbers.',
@@ -967,7 +967,7 @@ const VIRTUAL = 0xF0000000;
 function actionNotes(items) {
   const kinds = new Set(items.map(it => it.action && it.action.kind));
   const out = [];
-  if (kinds.has('admin')) out.push(t('note_admin'));
+  if (kinds.has('admin') || kinds.has('admincommand')) out.push(t('note_admin'));
   if (kinds.has('finder')) out.push(t('note_finder'));
   if (kinds.has('command')) out.push(t('note_command'));
   return out;
