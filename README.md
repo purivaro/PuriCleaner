@@ -105,8 +105,8 @@ tag ที่มีขีด เช่น `v0.3.0-rc1` จะเป็น pre-re
 ## Code signing policy
 
 - **macOS:** signed with Developer ID (Phra Anavach Purivaro, team 7ZFZ2CSF6M) and notarized by Apple.
-- **Windows:** Free code signing provided by [SignPath.io](https://about.signpath.io/), certificate by [SignPath Foundation](https://signpath.org/).
-  *(Windows signing is being set up; releases are signed once the SignPath Foundation application is approved.)*
+- **Windows:** not code-signed yet, so Windows SmartScreen shows a warning the first time
+  (choose **More info › Run anyway**). Each download's SHA-256 is listed in `SHA256SUMS.txt` on the release page.
 
 Only builds made by this repository's GitHub Actions workflow from the tagged source are signed,
 and every release is approved by hand before it is signed.
