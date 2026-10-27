@@ -81,6 +81,7 @@ pub struct App {
     state: Arc<Mutex<State>>,
     prog: Arc<Progress>,
     clean: Arc<Mutex<CleanStatus>>,
+    mem: Mutex<crate::memory::Memory>,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -247,6 +248,7 @@ impl App {
             state: Arc::new(Mutex::new(State::default())),
             prog: Arc::new(Progress::default()),
             clean: Arc::new(Mutex::new(CleanStatus::default())),
+            mem: Mutex::new(crate::memory::Memory::default()),
         }
     }
 
@@ -272,6 +274,8 @@ impl App {
             }
             "reveal" => self.reveal(arg_u32(args, "id").ok_or("missing id")?),
             "relaunch_admin" => relaunch_admin(),
+            "memory" => Ok(json!(lock(&self.mem).snapshot())),
+            "quit_app" => self.quit_app(args.get("key").and_then(Value::as_str).ok_or("missing key")?),
             "open_fda" => {
                 #[cfg(target_os = "macos")]
                 let _ = Command::new("open")
@@ -281,6 +285,27 @@ impl App {
             }
             _ => Err(format!("unknown command: {cmd}")),
         }
+    }
+
+    /// Ask an app to quit, then wait a few seconds to see how much RAM came back.
+    /// An app that asks "save changes?" is still open afterwards; that is fine.
+    fn quit_app(&self, key: &str) -> Result<Value, String> {
+        let before = {
+            let mut m = lock(&self.mem);
+            let before = m.memory_of(key);
+            m.quit(key)?;
+            before
+        };
+        let t0 = Instant::now();
+        let mut left = before;
+        while t0.elapsed() < std::time::Duration::from_secs(6) {
+            std::thread::sleep(std::time::Duration::from_millis(300));
+            left = lock(&self.mem).memory_of(key);
+            if left == 0 {
+                break;
+            }
+        }
+        Ok(json!({ "closed": left == 0, "freed": before.saturating_sub(left) }))
     }
 
     fn start_scan(&self) -> Result<Value, String> {

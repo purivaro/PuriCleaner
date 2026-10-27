@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Puri Cleaner</title>
   <link rel="icon" href="icon.svg">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <header class="topbar" data-tauri-drag-region>
@@ -17,6 +17,16 @@
       </div>
     </div>
     <div class="topbar-actions">
+      <div class="seg tab-seg" id="tabSeg" role="tablist">
+        <button data-tab="disk" role="tab">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h14" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="14" r=".9" fill="currentColor"/></svg>
+          <span data-i18n="tab_disk"></span>
+        </button>
+        <button data-tab="mem" role="tab">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6V4m4 2V4m4 2V4M6 16v-2m4 2v-2m4 2v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+          <span data-i18n="tab_mem"></span>
+        </button>
+      </div>
       <button class="icon-btn theme-btn" id="themeBtn">
         <svg class="sun" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="3.4" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 2.5v1.8M10 15.7v1.8M2.5 10h1.8M15.7 10h1.8M4.7 4.7l1.3 1.3M14 14l1.3 1.3M4.7 15.3 6 14M14 6l1.3-1.3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
         <svg class="moon" viewBox="0 0 20 20" aria-hidden="true"><path d="M16.2 12.4A6.6 6.6 0 0 1 7.6 3.8a6.6 6.6 0 1 0 8.6 8.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
@@ -148,6 +158,47 @@
     </section>
   </main>
 
+  <!-- RAM: what is using memory, and quitting apps that are not needed -->
+  <main class="app mem-view" id="memView" hidden>
+    <section class="stats mem-stats">
+      <div class="stat">
+        <div class="stat-label" data-i18n="mem_used"></div>
+        <div class="stat-value"><span id="memUsed">–</span><span class="stat-unit" id="memTotal"></span></div>
+        <div class="mem-meter"><i id="memBar"></i></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label" data-i18n="mem_pressure"></div>
+        <div class="stat-value"><span class="pressure" id="memPressure">–</span></div>
+        <div class="stat-note" id="memPressureNote"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label" data-i18n="mem_swap"></div>
+        <div class="stat-value"><span id="memSwap">–</span><span class="stat-unit" id="memSwapTotal"></span></div>
+        <div class="stat-note" data-i18n="mem_swap_note"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label" data-i18n="mem_quittable"></div>
+        <div class="stat-value"><span id="memQuittable">–</span><span class="stat-unit" id="memQuittableN"></span></div>
+        <div class="stat-note" data-i18n="mem_quittable_note"></div>
+      </div>
+    </section>
+    <section class="card mem-card">
+      <div class="card-head">
+        <div>
+          <h2 data-i18n="mem_apps"></h2>
+          <p class="muted" data-i18n="mem_apps_sub"></p>
+        </div>
+        <span class="mem-live" id="memLive"><i></i><span data-i18n="mem_live"></span></span>
+      </div>
+      <div class="mem-list" id="memApps"></div>
+      <details class="mem-more" id="memMore">
+        <summary><span data-i18n="mem_background"></span> <span class="mono" id="memBgTotal"></span></summary>
+        <p class="muted mem-more-note" data-i18n="mem_background_note"></p>
+        <div class="mem-list" id="memBg"></div>
+      </details>
+    </section>
+  </main>
+
   <div class="tooltip" id="tooltip" hidden></div>
   <div class="menu" id="menu" hidden></div>
 
@@ -159,6 +210,6 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="app.js?v=14"></script>
+  <script src="app.js?v=15"></script>
 </body>
 </html>
