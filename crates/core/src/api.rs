@@ -82,6 +82,7 @@ pub struct App {
     prog: Arc<Progress>,
     clean: Arc<Mutex<CleanStatus>>,
     mem: Mutex<crate::memory::Memory>,
+    apps: crate::apps::Apps,
 }
 
 fn lock<T>(m: &Mutex<T>) -> MutexGuard<'_, T> {
@@ -100,7 +101,7 @@ fn arg_ids(args: &Value) -> Vec<u32> {
 }
 
 #[cfg(not(windows))]
-fn sh_quote(s: &str) -> String {
+pub(crate) fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
@@ -140,13 +141,13 @@ fn relaunch_admin() -> Result<Value, String> {
 
 /// PowerShell single-quoted string.
 #[cfg(windows)]
-fn ps_quote(s: &str) -> String {
+pub(crate) fn ps_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "''"))
 }
 
 /// Delete paths as administrator, after Windows asks (UAC) once.
 #[cfg(windows)]
-fn admin_remove(paths: &[PathBuf], _thai: bool) -> Result<(), String> {
+pub(crate) fn admin_remove(paths: &[PathBuf], _thai: bool) -> Result<(), String> {
     let list = paths.iter().map(|p| ps_quote(&p.to_string_lossy())).collect::<Vec<_>>().join(",");
     elevated(&format!("Remove-Item -LiteralPath {list} -Recurse -Force -ErrorAction SilentlyContinue"))
 }
@@ -216,7 +217,7 @@ fn admin_command(argv: &[String], thai: bool) -> Result<(), String> {
 
 /// Run a shell command as root through the macOS password dialog.
 #[cfg(not(windows))]
-fn as_root(cmd: &str, thai: bool) -> Result<(), String> {
+pub(crate) fn as_root(cmd: &str, thai: bool) -> Result<(), String> {
     let prompt = if thai {
         "Puri Cleaner ต้องการลบไฟล์ของระบบที่คุณเลือก"
     } else {
@@ -243,6 +244,7 @@ impl App {
             .map(PathBuf::from)
             .unwrap_or_else(scan::system_root);
         App {
+            apps: crate::apps::Apps::new(home.clone()),
             single,
             home,
             state: Arc::new(Mutex::new(State::default())),
@@ -275,6 +277,7 @@ impl App {
             "reveal" => self.reveal(arg_u32(args, "id").ok_or("missing id")?),
             "relaunch_admin" => relaunch_admin(),
             "memory" => Ok(json!(lock(&self.mem).snapshot())),
+            "apps" | "uninstall" | "uninstall_stop" => self.apps.call(cmd, args),
             "quit_app" => self.quit_app(args.get("key").and_then(Value::as_str).ok_or("missing key")?),
             "open_fda" => {
                 #[cfg(target_os = "macos")]
