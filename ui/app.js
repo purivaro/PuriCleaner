@@ -89,7 +89,8 @@ const I18N = {
     kind_logs: 'บันทึกการทำงาน (log)',
     kind_launch: 'ตัวเปิดอัตโนมัติ',
     kind_helper: 'โปรแกรมช่วยของระบบ',
-    kind_folder: 'โฟลเดอร์ที่ติดตั้ง',
+    kind_folder: 'โฟลเดอร์ของแอป',
+    kind_install: 'โฟลเดอร์ที่ติดตั้ง ถ้ายังค้างหลังถอน',
     un_admin_tag: 'โฟลเดอร์ระบบ',
     un_name_tag: 'ชื่อตรงกัน ตรวจก่อน',
     un_review_note: 'รายการที่ติดป้าย "ชื่อตรงกัน" จับได้จากชื่อแอปเท่านั้น จึงไม่ได้ติ๊กไว้ให้ ดูให้แน่ใจว่าเป็นของแอปนี้ก่อนเลือก',
@@ -305,7 +306,8 @@ const I18N = {
     kind_logs: 'Logs',
     kind_launch: 'Starts automatically',
     kind_helper: 'System helper',
-    kind_folder: 'Install folder',
+    kind_folder: 'App folder',
+    kind_install: 'Install folder, if still there afterwards',
     un_admin_tag: 'system folder',
     un_name_tag: 'name match, check first',
     un_review_note: 'Items tagged "name match" were found by the app’s name only, so they are not ticked. Make sure they belong to this app before selecting them.',
@@ -996,7 +998,8 @@ function askUninstall(a) {
     </div>`, true);
   const update = () => {
     const chosen = items.filter(l => sel.has(l.path));
-    $('#unSum').innerHTML = t('un_sum', { size: esc(fmt(a.size + total(chosen, l => l.size))), n: num(chosen.length) });
+    // The install folder is the app itself, already in a.size.
+    $('#unSum').innerHTML = t('un_sum', { size: esc(fmt(a.size + total(chosen.filter(l => l.kind !== 'install'), l => l.size))), n: num(chosen.length) });
     // Sandboxed data and support folders can hold chats and documents: say so when it is a lot.
     const data = total(chosen.filter(l => l.kind === 'container' || l.kind === 'support'), l => l.size);
     $('#unData').hidden = data < 100e6;

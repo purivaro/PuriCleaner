@@ -26,7 +26,8 @@ pub struct Leftover {
     pub sure: bool,
     /// In a system folder: removed as administrator (permanently).
     pub admin: bool,
-    /// support, cache, container, prefs, state, logs, web, launch, helper, folder.
+    /// support, cache, container, prefs, state, logs, web, launch, helper, folder,
+    /// or install: the app's own folder (Windows), already counted in the app's size.
     pub kind: &'static str,
     pub newest: i64,
 }
@@ -223,7 +224,7 @@ impl Apps {
                 let there = |x: &Leftover| Path::new(&x.path).symlink_metadata().is_ok();
                 for a in &mut l.apps {
                     a.leftovers.retain(there);
-                    a.leftover_size = a.leftovers.iter().map(|x| x.size).sum();
+                    a.leftover_size = a.leftovers.iter().filter(|x| x.kind != "install").map(|x| x.size).sum();
                 }
                 for o in &mut l.orphans {
                     o.items.retain(there);
@@ -932,7 +933,7 @@ ConvertTo-Json -InputObject @($out) -Compress
                     let first_word = a.name.split_whitespace().next().unwrap_or("").to_lowercase();
                     let publisher = a.id.as_deref().and_then(|p| p.split_whitespace().next()).unwrap_or("").to_lowercase();
                     let sure = (!first_word.is_empty() && last.contains(&first_word)) || (publisher.len() >= 3 && last.contains(&publisher));
-                    found.push((i, PathBuf::from(loc), "folder", sure));
+                    found.push((i, PathBuf::from(loc), "install", sure));
                 }
             }
             let variants = name_variants(&a.name, a.id.as_deref());
@@ -974,10 +975,13 @@ ConvertTo-Json -InputObject @($out) -Compress
         for ((i, ..), l) in found.iter().zip(left) {
             let a = &mut apps[*i];
             // The registry's estimate is missing for some apps: measure the folder instead.
-            if a.size == 0 && l.kind == "folder" && a.path.as_deref().is_some_and(|loc| norm(loc) == norm(&l.path)) {
-                a.size = l.size;
+            if l.kind == "install" {
+                if a.size == 0 {
+                    a.size = l.size;
+                }
+            } else {
+                a.leftover_size += l.size;
             }
-            a.leftover_size += l.size;
             a.leftovers.push(l);
         }
         for a in &mut apps {

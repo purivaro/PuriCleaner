@@ -62,6 +62,9 @@ jobs:
             $shared = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData, $env:APPDATA, $env:LOCALAPPDATA, "$env:LOCALAPPDATA\Programs", $env:USERPROFILE, $env:SystemRoot, 'C:\') |
               Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\').ToLower() }
             foreach ($a in $apps.apps) {
+              # The install folder is the app itself: never counted again as a leftover.
+              $extra = ($a.leftovers | Where-Object { $_.kind -ne 'install' } | Measure-Object size -Sum).Sum
+              if ([int64]$extra -ne [int64]$a.leftover_size) { throw "leftover total of $($a.name) is $($a.leftover_size), expected $extra" }
               foreach ($l in $a.leftovers) {
                 $p = $l.path.TrimEnd('\').ToLower()
                 if ($shared -contains $p) { throw "shared folder offered as a leftover of $($a.name): $($l.path)" }
