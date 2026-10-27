@@ -94,7 +94,7 @@ impl Default for Memory {
 }
 
 /// The outermost `.app` bundle in a path ("…/Edge.app/Contents/Frameworks/Helper.app/…" → "…/Edge.app").
-fn outer_bundle(exe: &Path) -> Option<PathBuf> {
+pub(crate) fn outer_bundle(exe: &Path) -> Option<PathBuf> {
     let mut out = PathBuf::new();
     for c in exe.components() {
         out.push(c);

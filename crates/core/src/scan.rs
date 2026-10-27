@@ -280,19 +280,26 @@ fn flatten(sd: SDir, parent: u32, nodes: &mut Vec<Node>) -> u32 {
 
 /// Measure one path without keeping its structure: (bytes, files).
 pub fn measure(path: &Path) -> (u64, u64) {
+    let (bytes, files, _) = measure_newest(path);
+    (bytes, files)
+}
+
+/// Like `measure`, plus the newest modification time inside (unix seconds).
+pub fn measure_newest(path: &Path) -> (u64, u64, i64) {
     forbid_cloud_downloads();
-    let Ok(md) = fs::symlink_metadata(path) else { return (0, 0) };
+    let Ok(md) = fs::symlink_metadata(path) else { return (0, 0, 0) };
     if !md.is_dir() {
         #[cfg(unix)]
         let bytes = std::os::unix::fs::MetadataExt::blocks(&md) * 512;
         #[cfg(windows)]
         let bytes = md.len().div_ceil(4096) * 4096;
-        return (bytes, 1);
+        let mtime = md.modified().ok().and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok()).map_or(0, |d| d.as_secs() as i64);
+        return (bytes, 1, mtime);
     }
     let prog = Progress::default();
     let ctx = Ctx { prog: &prog, seen_links: Seen::new(), mounts: foreign_mounts() };
     let d = scan_dir(path, "".into(), &ctx);
-    (d.size, d.files)
+    (d.size, d.files, d.newest)
 }
 
 /// The per-user folder macOS keeps under /private/var/folders (holds T = temp, C = cache).

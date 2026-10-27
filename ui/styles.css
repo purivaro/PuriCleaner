@@ -640,3 +640,64 @@ svg { display: block; }
   .mem-row .mem-bar { display: none; }
   .tab-seg span { display: none; }
 }
+
+/* ─── Apps view ───────────────────────────────── */
+.apps-view { overflow-y: auto; }
+.apps-card { display: flex; flex-direction: column; flex: none; }
+.is-windows .apps-stats { grid-template-columns: repeat(3, 1fr); }
+.is-windows #appsUnusedStat { display: none; }
+.apps-tools { display: flex; align-items: center; gap: 8px; flex: none; }
+.search {
+  height: 32px; width: 190px; padding: 0 12px; border-radius: 10px;
+  border: 1px solid var(--line); background: var(--surface-2); color: var(--text); font: inherit; font-size: 13px;
+}
+.search::placeholder { color: var(--text-3); }
+.search:focus { outline: 2px solid var(--focus); outline-offset: -1px; background: var(--surface); }
+.apps-loading { display: grid; gap: 8px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.apps-loading .progress i { background: var(--c-code-ac); }
+.app-row { grid-template-columns: 34px minmax(0, 1.4fr) minmax(100px, 1fr) 84px 128px; cursor: pointer; transition: background .12s; }
+.app-row:hover { background: var(--surface-2); }
+.app-row.locked { cursor: default; }
+.app-row.locked:hover { background: none; }
+.app-bar i { background: var(--c-code-line); display: flex; }
+.app-bar b { display: block; height: 100%; background: var(--c-code-ac); border-radius: 99px; }
+.mem-tag.on { background: var(--safe-bg); color: var(--safe); }
+.orphan-row { grid-template-columns: 18px minmax(0, 1fr) 84px; cursor: pointer; }
+.orphan-row:hover { background: var(--surface-2); }
+
+/* Uninstall dialog */
+.un-head { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.un-head .mem-meta { white-space: normal; word-break: break-all; }
+.un-note { display: flex; gap: 8px; font-size: 13px; color: var(--text-2); background: var(--surface-2); border-radius: 10px; padding: 9px 12px; }
+.un-note.warn { background: var(--review-bg); color: var(--text); border: 1px solid var(--review-line); }
+.un-list { border: 1px solid var(--line); border-radius: 10px; max-height: min(46vh, 420px); overflow-y: auto; }
+.un-row { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--line); cursor: pointer; }
+.un-row:last-child { border-bottom: 0; }
+.un-row.un-app { background: var(--surface-2); cursor: default; }
+.un-row .check input:disabled + span { opacity: .55; }
+.un-kind { font-size: 13px; font-weight: 600; display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; }
+.un-path { font: 11.5px var(--mono); color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.un-size { font: 600 12.5px var(--mono); white-space: nowrap; }
+.un-sum { font-size: 13.5px; }
+.steps { display: grid; gap: 11px; margin: 2px 0; padding: 0; list-style: none; }
+.steps li { display: flex; align-items: center; gap: 10px; font-size: 13.5px; color: var(--text-3); }
+.steps li i { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--line-strong); flex: none; display: grid; place-items: center; }
+.steps li.now { color: var(--text); font-weight: 600; }
+.steps li.now i { border-color: var(--c-code-ac); border-top-color: transparent; animation: spin .8s linear infinite; }
+.steps li.done { color: var(--text-2); }
+.steps li.done i { background: var(--safe); border-color: var(--safe); }
+.steps li.done i::after { content: ""; width: 8px; height: 4px; margin-top: -2px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: rotate(-45deg); }
+@media (prefers-reduced-motion: reduce) { .steps li.now i { animation: none; border-top-color: var(--c-code-ac); } }
+@media (max-width: 860px) {
+  .apps-card .card-head { flex-wrap: wrap; }
+  .apps-tools { width: 100%; }
+  .search { flex: 1; width: auto; min-width: 0; }
+  .app-row { grid-template-columns: 34px minmax(0, 1fr) 76px 116px; }
+  .app-row .mem-bar { display: none; }
+  .is-windows .apps-stats { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  /* The whole row opens the uninstall dialog; give the name the room. */
+  .app-row { grid-template-columns: 34px minmax(0, 1fr) 76px; }
+  .app-row .btn, .app-row .mem-lock { display: none; }
+}

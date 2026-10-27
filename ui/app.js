@@ -51,6 +51,81 @@ const I18N = {
     tagline: 'ดูว่าพื้นที่หายไปไหน แล้วคืนพื้นที่อย่างปลอดภัย',
     tab_disk: 'พื้นที่ดิสก์',
     tab_mem: 'หน่วยความจำ',
+    tab_apps: 'แอป',
+    apps_count: 'แอปที่ติดตั้ง',
+    apps_unit: 'แอป',
+    apps_running_n: 'เปิดอยู่ {n} แอป',
+    apps_size: 'พื้นที่ของตัวแอป',
+    apps_size_note: 'รวมทุกแอปในโฟลเดอร์ Applications',
+    apps_data: 'ไฟล์ที่แอปเก็บไว้',
+    apps_data_note: 'ข้อมูล แคช และการตั้งค่าใน Library',
+    apps_unused: 'ไม่ได้เปิดเกิน 3 เดือน',
+    apps_unused_note: 'รวมไฟล์ที่แอปเหล่านั้นเก็บไว้',
+    apps_title: 'แอปที่ติดตั้ง',
+    apps_sub: 'ถอนการติดตั้งแบบหมดจด: เอาตัวแอปและไฟล์ที่แอปทิ้งไว้ออกพร้อมกัน ทุกอย่างย้ายลงถังขยะ กู้คืนได้',
+    apps_search: 'ค้นหาแอป',
+    apps_refresh: 'อ่านรายการใหม่',
+    sort_size: 'ขนาด',
+    sort_used: 'ไม่ได้ใช้นานสุด',
+    sort_name: 'ชื่อ',
+    apps_loading: 'กำลังอ่านแอปและไฟล์ที่แอปเก็บไว้… {d} / {n}',
+    apps_none: 'ไม่พบแอปที่ถอนการติดตั้งได้',
+    apps_none_match: 'ไม่พบแอปที่ตรงกับคำค้น',
+    apps_used: 'ใช้ล่าสุด {t}',
+    apps_installed: 'ติดตั้ง {t}',
+    apps_split: 'แอป {app} + ไฟล์ {data}',
+    apps_open: 'เปิดอยู่',
+    apps_unused_tag: 'ไม่ได้ใช้นาน',
+    apps_self: 'แอปนี้เอง',
+    uninstall: 'ถอนการติดตั้ง',
+    un_title: 'ถอนการติดตั้ง {name}',
+    un_app: 'ตัวแอป',
+    kind_support: 'ข้อมูลของแอป',
+    kind_container: 'ข้อมูลของแอป (sandbox)',
+    kind_cache: 'แคช',
+    kind_web: 'ข้อมูลเว็บและคุกกี้',
+    kind_prefs: 'การตั้งค่า',
+    kind_state: 'สถานะหน้าต่าง',
+    kind_logs: 'บันทึกการทำงาน (log)',
+    kind_launch: 'ตัวเปิดอัตโนมัติ',
+    kind_helper: 'โปรแกรมช่วยของระบบ',
+    kind_folder: 'โฟลเดอร์ที่ติดตั้ง',
+    un_admin_tag: 'โฟลเดอร์ระบบ',
+    un_name_tag: 'ชื่อตรงกัน ตรวจก่อน',
+    un_review_note: 'รายการที่ติดป้าย "ชื่อตรงกัน" จับได้จากชื่อแอปเท่านั้น จึงไม่ได้ติ๊กไว้ให้ ดูให้แน่ใจว่าเป็นของแอปนี้ก่อนเลือก',
+    un_running: 'แอปนี้เปิดอยู่ จะสั่งปิดให้ก่อน ถ้ามีงานที่ยังไม่บันทึก แอปจะถามก่อน',
+    un_extension: 'แอปนี้มีส่วนขยายระบบ (System Extension) macOS อาจถามให้ยืนยันการเอาออก หรือปิดเองได้ที่ System Settings › General › Login Items & Extensions',
+    un_nothing_left: 'ไม่พบไฟล์ที่แอปนี้เก็บไว้ใน Library',
+    un_sum: 'ย้ายลงถังขยะ <b>{size}</b> — ตัวแอปและไฟล์ {n} รายการ',
+    un_admin_note: 'ไฟล์ในโฟลเดอร์ระบบ {n} รายการจะถูกลบถาวร และ macOS จะขอรหัสผ่านผู้ดูแลเครื่อง',
+    un_data_warn: 'ที่เลือกไว้มีข้อมูลของแอป {size} เช่น แชต เอกสาร หรือไฟล์งานที่เก็บในเครื่อง ถ้ายังต้องใช้ให้เอาติ๊กออก ถ้าเผลอลบ ยังกู้คืนจากถังขยะได้จนกว่าจะล้างถัง',
+    un_running_title: 'กำลังถอน {name}…',
+    step_quit: 'ปิดแอป',
+    step_remove: 'ย้ายแอปและไฟล์ลงถังขยะ',
+    step_uninstaller: 'เปิดตัวถอนการติดตั้งของแอป',
+    step_waiting: 'รอให้ถอนการติดตั้งเสร็จ',
+    step_files: 'ย้ายไฟล์ลงถังขยะ',
+    un_quit_hint: 'ถ้าแอปถามให้บันทึกงาน ตอบที่หน้าต่างของแอปได้เลย',
+    un_uninstaller_hint: '',
+    un_waiting_hint: '',
+    un_stop: 'หยุดรอ',
+    un_done_title: 'ถอน {name} แล้ว',
+    un_figure: 'เอาออกแล้ว',
+    un_still_open_title: '{name} ยังเปิดอยู่',
+    un_still_open: 'แอปอาจกำลังถามให้บันทึกงาน บันทึกแล้วปิดแอป จากนั้นกดถอนการติดตั้งอีกครั้ง ยังไม่ได้ลบอะไรเลย',
+    un_cancelled_title: 'ยกเลิกแล้ว',
+    un_cancelled: 'ยังไม่ได้ลบอะไรเลย',
+    orphans_title: 'ไฟล์ค้างของแอปที่ลบไปแล้ว',
+    orphans_sub: 'ตั้งชื่อตามแอปที่ไม่มีในเครื่องแล้ว และไม่มีใครแตะมาเกิน 30 วัน ดูชื่อแล้วเลือกเอง',
+    orphan_items: '{n} รายการ',
+    orphan_changed: 'แก้ไขล่าสุด {t}',
+    orphans_btn: 'เลือกรายการที่จะเอาออก',
+    orphans_btn_n: 'ย้ายลงถังขยะ {size}',
+    orphans_confirm: 'ย้ายไฟล์ค้าง {size} ลงถังขยะ?',
+    orphans_confirm_d: 'ไฟล์เหล่านี้ไม่มีแอปไหนในเครื่องใช้แล้ว กู้คืนจากถังขยะได้จนกว่าจะล้างถัง',
+    orphans_running: 'กำลังย้ายไฟล์ค้าง…',
+    orphans_done_title: 'ย้ายไฟล์ค้างแล้ว',
+    confirm_move: 'ย้ายลงถังขยะ',
     mem_used: 'แรมที่ใช้อยู่',
     mem_of: 'จาก {total}',
     mem_pressure: 'ความตึงของแรม',
@@ -192,6 +267,81 @@ const I18N = {
     tagline: 'See where your space went, and get it back safely',
     tab_disk: 'Disk',
     tab_mem: 'Memory',
+    tab_apps: 'Apps',
+    apps_count: 'Installed apps',
+    apps_unit: 'apps',
+    apps_running_n: '{n} open now',
+    apps_size: 'Apps themselves',
+    apps_size_note: 'Everything in the Applications folders',
+    apps_data: 'Files apps keep',
+    apps_data_note: 'Data, caches and settings in Library',
+    apps_unused: 'Not opened in 3 months',
+    apps_unused_note: 'Including the files those apps keep',
+    apps_title: 'Installed apps',
+    apps_sub: 'A clean uninstall removes the app and the files it left behind together. Everything goes to the Trash, so it can be restored.',
+    apps_search: 'Search apps',
+    apps_refresh: 'Read the list again',
+    sort_size: 'Size',
+    sort_used: 'Least used',
+    sort_name: 'Name',
+    apps_loading: 'Reading apps and the files they keep… {d} / {n}',
+    apps_none: 'No apps that can be uninstalled were found',
+    apps_none_match: 'No app matches your search',
+    apps_used: 'last used {t}',
+    apps_installed: 'installed {t}',
+    apps_split: 'app {app} + files {data}',
+    apps_open: 'Open',
+    apps_unused_tag: 'Unused',
+    apps_self: 'This app',
+    uninstall: 'Uninstall',
+    un_title: 'Uninstall {name}',
+    un_app: 'The app',
+    kind_support: 'App data',
+    kind_container: 'App data (sandbox)',
+    kind_cache: 'Cache',
+    kind_web: 'Web data & cookies',
+    kind_prefs: 'Settings',
+    kind_state: 'Window state',
+    kind_logs: 'Logs',
+    kind_launch: 'Starts automatically',
+    kind_helper: 'System helper',
+    kind_folder: 'Install folder',
+    un_admin_tag: 'system folder',
+    un_name_tag: 'name match, check first',
+    un_review_note: 'Items tagged "name match" were found by the app’s name only, so they are not ticked. Make sure they belong to this app before selecting them.',
+    un_running: 'This app is open. It is asked to quit first; an app with unsaved work asks before closing.',
+    un_extension: 'This app has a system extension. macOS may ask you to confirm removing it, or turn it off in System Settings › General › Login Items & Extensions.',
+    un_nothing_left: 'No files kept by this app were found in Library.',
+    un_sum: 'Moves <b>{size}</b> to the Trash: the app and {n} items',
+    un_admin_note: '{n} items in system folders are deleted permanently, and macOS asks for an administrator password.',
+    un_data_warn: 'The selection includes {size} of app data, such as chats, documents or work kept on this Mac. Untick it if you still need it. Until you empty the Trash, it can be restored.',
+    un_running_title: 'Uninstalling {name}…',
+    step_quit: 'Quit the app',
+    step_remove: 'Move the app and its files to the Trash',
+    step_uninstaller: 'Open the app’s uninstaller',
+    step_waiting: 'Wait for the uninstaller to finish',
+    step_files: 'Move the files to the Trash',
+    un_quit_hint: 'If the app asks to save your work, answer it in the app’s window.',
+    un_uninstaller_hint: '',
+    un_waiting_hint: '',
+    un_stop: 'Stop waiting',
+    un_done_title: '{name} is uninstalled',
+    un_figure: 'removed',
+    un_still_open_title: '{name} is still open',
+    un_still_open: 'It may be asking to save your work. Save, quit the app, then press Uninstall again. Nothing was removed.',
+    un_cancelled_title: 'Cancelled',
+    un_cancelled: 'Nothing was removed.',
+    orphans_title: 'Leftovers of deleted apps',
+    orphans_sub: 'Named after apps that are no longer on this Mac and untouched for 30+ days. Check the names, then choose.',
+    orphan_items: '{n} items',
+    orphan_changed: 'last changed {t}',
+    orphans_btn: 'Select items to remove',
+    orphans_btn_n: 'Move {size} to the Trash',
+    orphans_confirm: 'Move {size} of leftovers to the Trash?',
+    orphans_confirm_d: 'No app on this Mac uses these files any more. Until you empty the Trash, they can be restored.',
+    orphans_running: 'Moving leftovers…',
+    orphans_done_title: 'Leftovers moved',
+    confirm_move: 'Move to Trash',
     mem_used: 'RAM in use',
     mem_of: 'of {total}',
     mem_pressure: 'Memory pressure',
@@ -349,6 +499,22 @@ if (keep('puri-theme')) document.documentElement.dataset.theme = keep('puri-them
 /* Wording that differs on Windows (Explorer, Recycle Bin, UAC, OneDrive). */
 const I18N_WIN = {
   th: {
+    apps_size_note: 'ตามขนาดที่แต่ละแอปแจ้งไว้กับ Windows',
+    apps_data_note: 'โฟลเดอร์ใน AppData และ ProgramData',
+    apps_sub: 'ถอนการติดตั้งแบบหมดจด: ใช้ตัวถอนการติดตั้งของแอปเอง แล้วเก็บโฟลเดอร์ที่ค้างไว้ให้ ไฟล์ที่เหลือย้ายไปถังรีไซเคิล กู้คืนได้ · แอปจาก Microsoft Store ถอนได้ที่ Settings › Apps',
+    sort_used: 'ติดตั้งนานสุด',
+    un_app: 'ตัวแอป (ใช้ตัวถอนการติดตั้งของแอปเอง)',
+    kind_support: 'ข้อมูลของแอป (AppData)',
+    un_running: 'แอปนี้เปิดอยู่ ตัวถอนการติดตั้งอาจขอให้ปิดก่อน',
+    un_win_flow: 'Puri Cleaner จะเปิดตัวถอนการติดตั้งของแอปเอง ทำตามขั้นตอนในหน้าต่างนั้นให้เสร็จ แล้ว Puri Cleaner จะเก็บโฟลเดอร์ที่เหลือที่เลือกไว้ให้',
+    un_nothing_left: 'ไม่พบโฟลเดอร์ที่แอปนี้ทิ้งไว้',
+    un_sum: 'ถอนตัวแอปและเก็บโฟลเดอร์ {n} รายการ รวม <b>{size}</b>',
+    un_admin_note: 'โฟลเดอร์ใน Program Files / ProgramData {n} รายการจะถูกลบถาวร Windows จะขอสิทธิ์ผู้ดูแลระบบ',
+    un_data_warn: 'ที่เลือกไว้มีข้อมูลของแอป {size} ถ้ายังต้องใช้ให้เอาติ๊กออก ถ้าเผลอลบ ยังกู้คืนจากถังรีไซเคิลได้จนกว่าจะล้างถัง',
+    step_files: 'ย้ายโฟลเดอร์ที่เหลือไปถังรีไซเคิล',
+    un_uninstaller_hint: 'ทำตามขั้นตอนในหน้าต่างถอนการติดตั้งของแอป ถ้า Windows ถามสิทธิ์ผู้ดูแลระบบ ให้กด Yes',
+    un_waiting_hint: 'ตัวถอนการติดตั้งยังไม่เสร็จ ถ้าหน้าต่างของมันยังเปิดอยู่ ทำให้เสร็จก่อน ถ้ากดยกเลิกไปแล้ว กด "หยุดรอ" ได้',
+    un_cancelled: 'ยังไม่ได้ลบโฟลเดอร์ใด ๆ',
     scanning_title: 'กำลังสแกนทั้งเครื่อง…',
     scan_stalled: 'ไม่มีความคืบหน้าสักพักแล้ว อาจมีโฟลเดอร์ที่ตอบช้าหรือรอสิทธิ์อยู่',
     scan_note: 'อ่านอย่างเดียว ยังไม่มีการลบอะไร ไฟล์ OneDrive ที่ไม่ได้อยู่ในเครื่องจะถูกข้ามโดยไม่ดาวน์โหลด',
@@ -377,6 +543,22 @@ const I18N_WIN = {
     lg_free: 'ว่าง',
   },
   en: {
+    apps_size_note: 'As each app reports it to Windows',
+    apps_data_note: 'Folders in AppData and ProgramData',
+    apps_sub: 'A clean uninstall runs the app’s own uninstaller, then removes the folders it left behind (to the Recycle Bin, so they can be restored). Microsoft Store apps are removed in Settings › Apps.',
+    sort_used: 'Oldest install',
+    un_app: 'The app (with its own uninstaller)',
+    kind_support: 'App data (AppData)',
+    un_running: 'This app is open. Its uninstaller may ask you to close it first.',
+    un_win_flow: 'Puri Cleaner opens the app’s own uninstaller. Finish the steps in its window; Puri Cleaner then removes the leftover folders you selected.',
+    un_nothing_left: 'No leftover folders of this app were found.',
+    un_sum: 'Uninstalls the app and removes {n} folders, <b>{size}</b> in all',
+    un_admin_note: '{n} folders in Program Files / ProgramData are deleted permanently. Windows asks for administrator permission.',
+    un_data_warn: 'The selection includes {size} of app data. Untick it if you still need it. Until you empty the Recycle Bin, it can be restored.',
+    step_files: 'Move leftover folders to the Recycle Bin',
+    un_uninstaller_hint: 'Follow the steps in the app’s uninstaller. If Windows asks for administrator permission, choose Yes.',
+    un_waiting_hint: 'The uninstaller has not finished. If its window is still open, finish it first. If you cancelled it, press Stop waiting.',
+    un_cancelled: 'No folders were removed.',
     scan_stalled: 'No progress for a while. A folder may be slow to answer or waiting for permission.',
     scan_note: 'Read-only, nothing is deleted. OneDrive files that are not on this PC are skipped, never downloaded.',
     scanning_title: 'Scanning your PC…',
@@ -476,11 +658,15 @@ const ICON = {
 
 const S = {
   // "#tab=mem" in the link opens the memory page directly.
-  tab: (HASH.get('tab') || keep('puri-tab')) === 'mem' ? 'mem' : 'disk',
+  tab: ['mem', 'apps'].find(x => x === (HASH.get('tab') || keep('puri-tab'))) || 'disk',
   scanVisible: true,
   mem: null,
   memTimer: null,
   quitting: null,
+  apps: null,
+  appsPolling: false,
+  appsSort: keep('puri-apps-sort') || 'size',
+  orphanSel: new Set(),
   overview: null,
   node: null,
   recs: [],
@@ -518,20 +704,22 @@ function showScanScreen(on) {
   applyTab();
 }
 
-/* ─── Tabs: disk / memory ─────────────────────────────────────── */
+/* ─── Tabs: disk / apps / memory ──────────────────────────────── */
 
 function applyTab() {
-  const mem = S.tab === 'mem';
-  $('#memView').hidden = !mem;
-  $('#scanScreen').hidden = mem || !S.scanVisible;
-  $('#app').hidden = mem || !!S.scanVisible;
-  $('#rescanBtn').hidden = mem || !!S.scanVisible;
+  const disk = S.tab === 'disk';
+  $('#memView').hidden = S.tab !== 'mem';
+  $('#appsView').hidden = S.tab !== 'apps';
+  $('#scanScreen').hidden = !disk || !S.scanVisible;
+  $('#app').hidden = !disk || !!S.scanVisible;
+  $('#rescanBtn').hidden = !disk || !!S.scanVisible;
   $$('#tabSeg button').forEach(b => {
     b.classList.toggle('on', b.dataset.tab === S.tab);
     b.setAttribute('aria-selected', b.dataset.tab === S.tab);
   });
-  if (mem) startMem(); else stopMem();
-  if (!mem && S.node) requestAnimationFrame(() => renderTreemap());
+  if (S.tab === 'mem') startMem(); else stopMem();
+  if (S.tab === 'apps' && !S.apps) loadApps();
+  if (disk && S.node) requestAnimationFrame(() => renderTreemap());
 }
 
 /* ─── Memory ──────────────────────────────────────────────────── */
@@ -655,6 +843,290 @@ function askQuit(a, row) {
   };
 }
 
+/* ─── Apps ────────────────────────────────────────────────────── */
+
+const UNUSED_DAYS = 90;
+
+function appTotal(a) { return a.size + a.leftover_size; }
+function isUnused(a) { return !!a.last_used && Date.now() / 1000 - a.last_used > UNUSED_DAYS * 86400; }
+function total(list, f) { return list.reduce((s, x) => s + f(x), 0); }
+function initial(name) { return (name.trim()[0] || '?').toUpperCase(); }
+
+// "/Users/me/Library/Caches/x" → "~/Library/Caches/x"
+function shortPath(p) {
+  return String(p || '').replace(/^\/Users\/[^/]+/, '~').replace(/^[A-Za-z]:\\Users\\[^\\]+/, '~');
+}
+
+// The Library folder an item sits in: "Application Support", "Caches", …
+function placeOf(p) {
+  const m = /Library[\\/]([^\\/]+)/.exec(p);
+  return m ? m[1] : '';
+}
+
+function loadApps(refresh) {
+  if (S.appsPolling) return;
+  S.appsPolling = true;
+  let args = refresh ? { refresh: true } : {};
+  const poll = async () => {
+    try {
+      const r = await api('apps', args);
+      args = {};
+      if (r.apps) S.apps = r;
+      showAppsProgress(r);
+      if (r.loading) { setTimeout(poll, 400); return; }
+      renderApps();
+    } catch (e) {
+      $('#appsLoading').hidden = true;
+      $('#appsList').innerHTML = `<div class="mem-empty">${esc(t('err_generic', { msg: e.message }))}</div>`;
+    }
+    S.appsPolling = false;
+  };
+  poll();
+}
+
+function showAppsProgress(r) {
+  $('#appsLoading').hidden = !r.loading;
+  $('#appsRefresh').disabled = !!r.loading;
+  if (!r.loading) return;
+  $('#appsBar').style.width = (r.total ? 100 * r.done / r.total : 2) + '%';
+  $('#appsLoadingText').textContent = t('apps_loading', { d: num(r.done), n: num(r.total || 0) });
+}
+
+function renderApps() {
+  const d = S.apps;
+  if (!d || !d.apps) return;
+  const apps = d.apps;
+  $('#appsCount').textContent = num(apps.length);
+  const open = apps.filter(a => a.running).length;
+  $('#appsRunning').textContent = open ? t('apps_running_n', { n: num(open) }) : '';
+  $('#appsSize').textContent = fmt(total(apps, a => a.size));
+  $('#appsData').textContent = fmt(total(apps, a => a.leftover_size));
+  const unused = apps.filter(isUnused);
+  $('#appsUnused').textContent = fmt(total(unused, appTotal));
+  $('#appsUnusedN').textContent = t('n_apps', { n: num(unused.length) });
+  $$('#appsSort button').forEach(b => b.classList.toggle('on', b.dataset.sort === S.appsSort));
+
+  const q = $('#appsSearch').value.trim().toLowerCase();
+  const list = apps.filter(a => !q || a.name.toLowerCase().includes(q) || (a.id || '').toLowerCase().includes(q));
+  const when = a => a.last_used || a.installed || 0;
+  list.sort({
+    size: (a, b) => appTotal(b) - appTotal(a),
+    // Never-used (0) first, then the longest unused.
+    used: (a, b) => when(a) - when(b) || appTotal(b) - appTotal(a),
+    name: (a, b) => a.name.localeCompare(b.name, lang),
+  }[S.appsSort] || ((a, b) => appTotal(b) - appTotal(a)));
+  const max = Math.max(1, ...apps.map(appTotal));
+  const box = $('#appsList');
+  box.innerHTML = '';
+  if (!list.length) box.append(el('div', 'mem-empty', esc(t(q ? 'apps_none_match' : 'apps_none'))));
+  for (const a of list) box.append(appRow(a, max));
+  renderOrphans();
+}
+
+function appRow(a, max) {
+  const row = el('div', 'mem-row app-row' + (a.can_remove ? '' : ' locked'));
+  const meta = [];
+  if (a.version) meta.push(a.version);
+  if (a.last_used) meta.push(t('apps_used', { t: ago(a.last_used) }));
+  else if (a.installed) meta.push(t('apps_installed', { t: ago(a.installed) }));
+  if (a.leftover_size) meta.push(t('apps_split', { app: fmt(a.size), data: fmt(a.leftover_size) }));
+  const tags = [];
+  if (a.running) tags.push(`<span class="mem-tag on">${esc(t('apps_open'))}</span>`);
+  if (isUnused(a)) tags.push(`<span class="mem-tag idle">${esc(t('apps_unused_tag'))}</span>`);
+  const sum = appTotal(a);
+  const appShare = sum ? 100 * a.size / sum : 100;
+  row.innerHTML = `
+    <div class="mem-avatar" style="background:${avatarColor(a.name)}">${esc(initial(a.name))}</div>
+    <div style="min-width:0">
+      <div class="mem-name" title="${esc(a.path || a.name)}">${esc(a.name)}${tags.join('')}</div>
+      <div class="mem-meta">${esc(meta.join(' · '))}</div>
+    </div>
+    <div class="mem-bar app-bar"><i style="width:${Math.max(1.5, 100 * sum / max)}%"><b style="width:${appShare}%"></b></i></div>
+    <div class="mem-size">${fmt(sum)}</div>
+    ${a.can_remove ? `<button class="btn">${esc(t('uninstall'))}</button>` : `<div class="mem-lock">${esc(t('apps_self'))}</div>`}`;
+  if (a.can_remove) row.onclick = () => askUninstall(a);
+  return row;
+}
+
+function askUninstall(a) {
+  const win = OS === 'windows';
+  const items = a.leftovers;
+  const sel = new Set(items.filter(l => l.sure).map(l => l.path));
+  const notes = [];
+  if (win) notes.push(['', t('un_win_flow')]);
+  if (a.running) notes.push(['', t('un_running')]);
+  if (a.extension) notes.push(['warn', t('un_extension')]);
+  const rows = items.map((l, i) => `
+    <label class="un-row">
+      <span class="check"><input type="checkbox" data-i="${i}" ${sel.has(l.path) ? 'checked' : ''}><span></span></span>
+      <div style="min-width:0">
+        <div class="un-kind">${esc(t('kind_' + l.kind))}${l.admin ? `<span class="mem-tag">${esc(t('un_admin_tag'))}</span>` : ''}${l.sure ? '' : `<span class="mem-tag idle">${esc(t('un_name_tag'))}</span>`}</div>
+        <div class="un-path" title="${esc(l.path)}">&lrm;${esc(shortPath(l.path))}</div>
+      </div>
+      <span class="un-size">${fmt(l.size)}</span>
+    </label>`).join('');
+  openModal(`
+    <div class="un-head">
+      <div class="mem-avatar" style="background:${avatarColor(a.name)}">${esc(initial(a.name))}</div>
+      <div style="min-width:0">
+        <h3 class="modal-title" id="modalTitle">${esc(t('un_title', { name: a.name }))}</h3>
+        <div class="mem-meta">${esc([a.version, shortPath(a.path)].filter(Boolean).join(' · '))}</div>
+      </div>
+    </div>
+    ${notes.map(([cls, text]) => `<div class="un-note ${cls}">${esc(text)}</div>`).join('')}
+    <div class="un-list">
+      <div class="un-row un-app">
+        <span class="check"><input type="checkbox" checked disabled><span></span></span>
+        <div style="min-width:0">
+          <div class="un-kind">${esc(t('un_app'))}</div>
+          <div class="un-path" title="${esc(a.path || '')}">&lrm;${esc(shortPath(a.path || a.name))}</div>
+        </div>
+        <span class="un-size">${fmt(a.size)}</span>
+      </div>
+      ${rows}
+    </div>
+    ${items.length ? '' : `<p class="modal-text">${esc(t('un_nothing_left'))}</p>`}
+    ${items.some(l => !l.sure) ? `<p class="modal-text">${esc(t('un_review_note'))}</p>` : ''}
+    <div class="un-note warn" id="unData" hidden></div>
+    <p class="modal-text" id="unAdmin" hidden></p>
+    <div class="un-sum" id="unSum"></div>
+    <div class="modal-actions">
+      <button class="btn" data-close data-autofocus>${esc(t('cancel'))}</button>
+      <button class="btn btn-danger" id="confirmUninstall">${esc(t('uninstall'))}</button>
+    </div>`, true);
+  const update = () => {
+    const chosen = items.filter(l => sel.has(l.path));
+    $('#unSum').innerHTML = t('un_sum', { size: esc(fmt(a.size + total(chosen, l => l.size))), n: num(chosen.length) });
+    // Sandboxed data and support folders can hold chats and documents: say so when it is a lot.
+    const data = total(chosen.filter(l => l.kind === 'container' || l.kind === 'support'), l => l.size);
+    $('#unData').hidden = data < 100e6;
+    $('#unData').textContent = t('un_data_warn', { size: fmt(data) });
+    const admin = chosen.filter(l => l.admin).length;
+    $('#unAdmin').hidden = !admin;
+    $('#unAdmin').textContent = t('un_admin_note', { n: num(admin) });
+  };
+  $$('#modalBody input[data-i]').forEach(cb => cb.addEventListener('change', () => {
+    const l = items[+cb.dataset.i];
+    if (cb.checked) sel.add(l.path); else sel.delete(l.path);
+    update();
+  }));
+  update();
+  $('#confirmUninstall').onclick = () => runUninstall(a, Array.from(sel));
+}
+
+async function runUninstall(a, paths) {
+  try {
+    await api('uninstall', { key: a ? a.key : null, paths, lang });
+  } catch (e) {
+    toast(t('err_generic', { msg: e.message }));
+    return;
+  }
+  const win = OS === 'windows';
+  // [job step, label]
+  const steps = !a ? [['remove', 'step_files']]
+    : win ? [['uninstaller', 'step_uninstaller'], ['waiting', 'step_waiting'], ['remove', 'step_files']]
+    : [['quit', 'step_quit'], ['remove', 'step_remove']];
+  modalLocked = true;
+  openModal(`
+    <h3 class="modal-title" id="modalTitle">${esc(a ? t('un_running_title', { name: a.name }) : t('orphans_running'))}</h3>
+    <ol class="steps">${steps.map(([, k]) => `<li><i></i><span>${esc(t(k))}</span></li>`).join('')}</ol>
+    <p class="modal-text" id="unHint" hidden></p>
+    <div class="modal-actions" id="unStopRow" hidden><button class="btn" id="unStop">${esc(t('un_stop'))}</button></div>`);
+  $('#unStop').onclick = () => api('uninstall_stop').catch(() => {});
+  const hints = { quit: 'un_quit_hint', uninstaller: 'un_uninstaller_hint', waiting: 'un_waiting_hint' };
+  const poll = async () => {
+    let j;
+    try { j = (await api('apps', { brief: true })).job; } catch (_) { setTimeout(poll, 600); return; }
+    const at = Math.max(0, steps.findIndex(([s]) => s === j.step));
+    $$('.steps li').forEach((li, i) => { li.className = i < at ? 'done' : i === at ? 'now' : ''; });
+    const hint = hints[j.step] ? t(hints[j.step]) : '';
+    $('#unHint').hidden = !hint;
+    $('#unHint').textContent = hint;
+    $('#unStopRow').hidden = j.step !== 'waiting';
+    if (j.running) { setTimeout(poll, 400); return; }
+    modalLocked = false;
+    finishUninstall(a, j);
+  };
+  poll();
+}
+
+function finishUninstall(a, j) {
+  const errs = j.errors || [];
+  const close = `<div class="modal-actions"><button class="btn btn-primary" data-close data-autofocus>${esc(t('close'))}</button></div>`;
+  if (j.still_open || j.cancelled) {
+    const title = j.still_open ? t('un_still_open_title', { name: a ? a.name : '' }) : t('un_cancelled_title');
+    openModal(`
+      <h3 class="modal-title" id="modalTitle">${esc(title)}</h3>
+      <p class="modal-text">${esc(t(j.still_open ? 'un_still_open' : 'un_cancelled'))}</p>${close}`);
+  } else {
+    const done = !a || j.removed_app;
+    openModal(`
+      ${done ? `<div class="done-mark">${ICON.check}</div>` : ''}
+      <h3 class="modal-title" id="modalTitle">${esc(!done ? t('done_title') : a ? t('un_done_title', { name: a.name }) : t('orphans_done_title'))}</h3>
+      ${j.moved + j.freed ? `<div class="modal-figure">${fmt(j.moved + j.freed)}<small>${esc(t('un_figure'))}</small></div>` : ''}
+      ${j.moved ? `<p class="modal-text">${esc(t('done_trash_note'))}</p>` : ''}
+      ${errs.length ? `<p class="modal-text">${esc(t('done_errors', { n: errs.length }))}</p><div class="err-list">${errs.map(esc).join('<br>')}</div>` : ''}
+      ${close}`);
+  }
+  S.orphanSel.clear();
+  loadApps();
+}
+
+function renderOrphans() {
+  const os = (S.apps && S.apps.orphans) || [];
+  $('#orphansCard').hidden = !os.length;
+  for (const id of Array.from(S.orphanSel)) if (!os.some(o => o.id === id)) S.orphanSel.delete(id);
+  const box = $('#orphansList');
+  box.innerHTML = '';
+  for (const o of os) {
+    const row = el('label', 'mem-row orphan-row');
+    const places = Array.from(new Set(o.items.map(i => placeOf(i.path)).filter(Boolean)));
+    const meta = [t('orphan_items', { n: num(o.items.length) })];
+    if (o.newest) meta.push(t('orphan_changed', { t: ago(o.newest) }));
+    row.title = o.items.map(i => shortPath(i.path)).join('\n');
+    row.innerHTML = `
+      <span class="check"><input type="checkbox" ${S.orphanSel.has(o.id) ? 'checked' : ''}><span></span></span>
+      <div style="min-width:0">
+        <div class="mem-name">${esc(o.id)}</div>
+        <div class="mem-meta">${esc(meta.concat(places).join(' · '))}</div>
+      </div>
+      <div class="mem-size">${fmt(o.size)}</div>`;
+    $('input', row).addEventListener('change', ev => {
+      if (ev.target.checked) S.orphanSel.add(o.id); else S.orphanSel.delete(o.id);
+      renderOrphanBtn();
+    });
+    box.append(row);
+  }
+  renderOrphanBtn();
+}
+
+function chosenOrphans() {
+  return ((S.apps && S.apps.orphans) || []).filter(o => S.orphanSel.has(o.id));
+}
+
+function renderOrphanBtn() {
+  const chosen = chosenOrphans();
+  const btn = $('#orphansBtn');
+  btn.disabled = !chosen.length;
+  btn.className = 'btn' + (chosen.length ? ' btn-primary' : '');
+  btn.textContent = chosen.length ? t('orphans_btn_n', { size: fmt(total(chosen, o => o.size)) }) : t('orphans_btn');
+}
+
+function askOrphans() {
+  const chosen = chosenOrphans();
+  if (!chosen.length) return;
+  const size = fmt(total(chosen, o => o.size));
+  openModal(`
+    <h3 class="modal-title" id="modalTitle">${esc(t('orphans_confirm', { size }))}</h3>
+    <div class="sum-list">${chosen.map(o => `<div><span>${esc(o.id)}</span><b>${fmt(o.size)}</b></div>`).join('')}</div>
+    <p class="modal-text">${esc(t('orphans_confirm_d'))}</p>
+    <div class="modal-actions">
+      <button class="btn" data-close data-autofocus>${esc(t('cancel'))}</button>
+      <button class="btn btn-primary" id="confirmOrphans">${esc(t('confirm_move'))}</button>
+    </div>`);
+  $('#confirmOrphans').onclick = () => runUninstall(null, chosen.flatMap(o => o.items.map(i => i.path)));
+}
+
 async function startScan() {
   showScanScreen(true);
   $('#scanError').hidden = true;
@@ -758,6 +1230,9 @@ function renderStatic() {
   $$('#langSeg button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
   applyTheme();
   $$('#viewSeg button').forEach(b => b.classList.toggle('on', b.dataset.view === S.view));
+  $('#appsSearch').placeholder = t('apps_search');
+  $('#appsRefresh').title = t('apps_refresh');
+  $('#appsRefresh').setAttribute('aria-label', t('apps_refresh'));
   const o = S.overview;
   if (o) {
     $('#brandSub').textContent = t('scanned_in', { files: num(o.files), sec: (o.scan_ms / 1000).toFixed(1) })
@@ -1424,7 +1899,16 @@ function bind() {
     renderStatic();
     if (S.overview) renderAll();
     if (S.mem) renderMem();
+    if (S.apps) renderApps();
   });
+  $('#appsSearch').addEventListener('input', renderApps);
+  $$('#appsSort button').forEach(b => b.onclick = () => {
+    S.appsSort = b.dataset.sort;
+    keep('puri-apps-sort', S.appsSort);
+    renderApps();
+  });
+  $('#appsRefresh').onclick = () => loadApps(true);
+  $('#orphansBtn').onclick = askOrphans;
   $$('#viewSeg button').forEach(b => b.onclick = () => {
     S.view = b.dataset.view;
     keep('puri-view', S.view);

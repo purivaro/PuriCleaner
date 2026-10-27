@@ -90,9 +90,8 @@ pub fn is_elevated() -> bool {
     false
 }
 
-#[cfg(target_os = "macos")]
 /// Days since 1970-01-01 for a civil date (Howard Hinnant's algorithm).
-fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
+pub(crate) fn days_from_civil(y: i64, m: i64, d: i64) -> i64 {
     let y = if m <= 2 { y - 1 } else { y };
     let era = if y >= 0 { y } else { y - 399 } / 400;
     let yoe = y - era * 400;
@@ -174,7 +173,7 @@ fn app_bundles() -> Vec<PathBuf> {
 #[cfg(target_os = "macos")]
 /// When the app's program last ran: the newer of Spotlight's "last used"
 /// and the executable's access time (Spotlight misses apps not opened via Finder).
-fn app_last_used(apps: &[PathBuf]) -> HashMap<PathBuf, i64> {
+pub(crate) fn app_last_used(apps: &[PathBuf]) -> HashMap<PathBuf, i64> {
     let mut m: HashMap<PathBuf, i64> = HashMap::new();
     for app in apps {
         let mut t = 0i64;

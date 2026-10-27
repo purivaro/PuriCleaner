@@ -1,4 +1,5 @@
 pub mod api;
+pub mod apps;
 pub mod category;
 pub mod clean;
 pub mod disk;

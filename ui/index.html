@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Puri Cleaner</title>
   <link rel="icon" href="icon.svg">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=11">
 </head>
 <body>
   <header class="topbar" data-tauri-drag-region>
@@ -21,6 +21,10 @@
         <button data-tab="disk" role="tab">
           <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4" width="14" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 12h14" stroke="currentColor" stroke-width="1.6"/><circle cx="14" cy="14" r=".9" fill="currentColor"/></svg>
           <span data-i18n="tab_disk"></span>
+        </button>
+        <button data-tab="apps" role="tab">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="3" width="5.5" height="5.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="3" width="5.5" height="5.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="3" y="11.5" width="5.5" height="5.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="11.5" y="11.5" width="5.5" height="5.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+          <span data-i18n="tab_apps"></span>
         </button>
         <button data-tab="mem" role="tab">
           <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="6" width="14" height="8" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 6V4m4 2V4m4 2V4M6 16v-2m4 2v-2m4 2v-2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
@@ -199,6 +203,68 @@
     </section>
   </main>
 
+  <!-- Apps: what is installed, and removing an app with everything it left behind -->
+  <main class="app apps-view" id="appsView" hidden>
+    <section class="stats apps-stats">
+      <div class="stat">
+        <div class="stat-label" data-i18n="apps_count"></div>
+        <div class="stat-value"><span id="appsCount">–</span><span class="stat-unit" data-i18n="apps_unit"></span></div>
+        <div class="stat-note" id="appsRunning"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label" data-i18n="apps_size"></div>
+        <div class="stat-value"><span id="appsSize">–</span></div>
+        <div class="stat-note" data-i18n="apps_size_note"></div>
+      </div>
+      <div class="stat">
+        <div class="stat-label" data-i18n="apps_data"></div>
+        <div class="stat-value"><span id="appsData">–</span></div>
+        <div class="stat-note" data-i18n="apps_data_note"></div>
+      </div>
+      <div class="stat" id="appsUnusedStat">
+        <div class="stat-label" data-i18n="apps_unused"></div>
+        <div class="stat-value"><span id="appsUnused">–</span><span class="stat-unit" id="appsUnusedN"></span></div>
+        <div class="stat-note" data-i18n="apps_unused_note"></div>
+      </div>
+    </section>
+
+    <section class="card apps-card">
+      <div class="card-head">
+        <div>
+          <h2 data-i18n="apps_title"></h2>
+          <p class="muted" data-i18n="apps_sub"></p>
+        </div>
+        <div class="apps-tools">
+          <input type="search" class="search" id="appsSearch" autocomplete="off" spellcheck="false">
+          <div class="seg seg-sm" id="appsSort" role="group">
+            <button data-sort="size" data-i18n="sort_size"></button>
+            <button data-sort="used" data-i18n="sort_used"></button>
+            <button data-sort="name" data-i18n="sort_name"></button>
+          </div>
+          <button class="icon-btn" id="appsRefresh">
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M16.5 10a6.5 6.5 0 1 1-1.9-4.6M16.5 3.5v3.4h-3.4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="apps-loading" id="appsLoading" hidden>
+        <div class="progress"><i id="appsBar"></i></div>
+        <span class="muted" id="appsLoadingText"></span>
+      </div>
+      <div class="mem-list" id="appsList"></div>
+    </section>
+
+    <section class="card apps-card" id="orphansCard" hidden>
+      <div class="card-head">
+        <div>
+          <h2 data-i18n="orphans_title"></h2>
+          <p class="muted" data-i18n="orphans_sub"></p>
+        </div>
+        <button class="btn" id="orphansBtn" disabled></button>
+      </div>
+      <div class="mem-list" id="orphansList"></div>
+    </section>
+  </main>
+
   <div class="tooltip" id="tooltip" hidden></div>
   <div class="menu" id="menu" hidden></div>
 
@@ -210,6 +276,6 @@
 
   <div class="toasts" id="toasts"></div>
 
-  <script src="app.js?v=15"></script>
+  <script src="app.js?v=16"></script>
 </body>
 </html>

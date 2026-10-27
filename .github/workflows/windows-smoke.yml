@@ -48,6 +48,31 @@ jobs:
             $bad = $mem.apps | Where-Object { $_.can_quit -and $_.name -match '^(explorer|svchost|csrss|winlogon|dwm|lsass|services)\.exe$' }
             if ($bad) { throw "system process offered for quit: $($bad.name -join ', ')" }
 
+            # Apps view: list installed apps and their leftovers. Read-only: never uninstalls.
+            $waited = 0
+            do { Start-Sleep 1; $waited++; $apps = Api apps } while ($apps.loading -and $waited -lt 300)
+            if ($apps.loading) { throw 'app list did not finish' }
+            Write-Host "Installed apps: $($apps.apps.Count)"
+            foreach ($a in ($apps.apps | Sort-Object { $_.size + $_.leftover_size } -Descending | Select-Object -First 15)) {
+              Write-Host ("  {0,-40} {1,9} +{2,9}  leftovers={3} remove={4}" -f $a.name, (& $gb $a.size), (& $gb $a.leftover_size), $a.leftovers.Count, $a.can_remove)
+              foreach ($l in $a.leftovers) { Write-Host ("      {0} {1,-8} {2,9} {3}" -f $(if ($l.sure) { 'x' } else { '?' }), $l.kind, (& $gb $l.size), $l.path) }
+            }
+            if ($apps.apps.Count -eq 0) { throw 'no installed apps found' }
+            # A leftover is never a shared folder itself, nor anything in C:\Windows.
+            $shared = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:ProgramData, $env:APPDATA, $env:LOCALAPPDATA, "$env:LOCALAPPDATA\Programs", $env:USERPROFILE, $env:SystemRoot, 'C:\') |
+              Where-Object { $_ } | ForEach-Object { $_.TrimEnd('\').ToLower() }
+            foreach ($a in $apps.apps) {
+              foreach ($l in $a.leftovers) {
+                $p = $l.path.TrimEnd('\').ToLower()
+                if ($shared -contains $p) { throw "shared folder offered as a leftover of $($a.name): $($l.path)" }
+                if ($p.StartsWith("$($env:SystemRoot.ToLower())\")) { throw "Windows folder offered as a leftover of $($a.name): $($l.path)" }
+              }
+            }
+            # Uninstall only accepts paths it listed itself.
+            $refused = $false
+            try { Api uninstall ('{"paths":["' + ($env:USERPROFILE -replace '\\', '\\') + '\\Documents"]}') | Out-Null } catch { $refused = $true }
+            if (-not $refused) { throw 'uninstall accepted a path it never listed' }
+
             Api scan | Out-Null
             $waited = 0
             do {
