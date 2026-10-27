@@ -21,7 +21,9 @@ function keep(key, value) {
   } catch (_) { return null; }
 }
 
-let TOKEN = new URLSearchParams(location.hash.slice(1)).get('t');
+// Read link parameters once; the token is then removed from the address bar.
+const HASH = new URLSearchParams(location.hash.slice(1));
+let TOKEN = HASH.get('t');
 if (TOKEN) {
   store('puri-token', TOKEN);
   history.replaceState(null, '', location.pathname);
@@ -47,6 +49,43 @@ async function api(cmd, args = {}) {
 const I18N = {
   th: {
     tagline: 'ดูว่าพื้นที่หายไปไหน แล้วคืนพื้นที่อย่างปลอดภัย',
+    tab_disk: 'พื้นที่ดิสก์',
+    tab_mem: 'หน่วยความจำ',
+    mem_used: 'แรมที่ใช้อยู่',
+    mem_of: 'จาก {total}',
+    mem_pressure: 'ความตึงของแรม',
+    p_normal: 'ปกติ',
+    p_warn: 'เริ่มตึง',
+    p_critical: 'ตึงมาก',
+    p_normal_d: 'แรมพอใช้ ปิดแอปไม่ได้ทำให้เร็วขึ้น',
+    p_warn_d: 'เริ่มต้องพึ่ง swap ปิดแอปที่ไม่ใช้จะช่วยได้',
+    p_critical_d: 'แรมไม่พอ เครื่องจะหน่วง ควรปิดแอปที่ไม่ใช้',
+    mem_swap: 'Swap (แรมสำรองบนดิสก์)',
+    mem_swap_note: 'ใช้มาก แปลว่าที่ผ่านมาแรมไม่พอ',
+    mem_quittable: 'แอปที่ปิดได้',
+    mem_quittable_note: 'แรมรวมของแอปที่เปิดอยู่',
+    n_apps: '{n} แอป',
+    mem_apps: 'แอปที่เปิดอยู่',
+    mem_apps_sub: 'เรียงตามแรมที่ใช้ ปิดแอปที่ไม่ได้ใช้เพื่อคืนแรม ถ้ามีงานค้าง แอปจะถามให้บันทึกก่อน',
+    mem_live: 'อัปเดตสด',
+    mem_background: 'โปรแกรมเบื้องหลังและระบบ',
+    mem_background_note: 'เป็นส่วนของระบบหรือโปรแกรมที่ทำงานเบื้องหลัง Puri Cleaner จะไม่ปิดให้ เพราะอาจทำให้เครื่องหรือโปรแกรมอื่นทำงานผิดปกติ',
+    mem_procs: '{n} process',
+    mem_proc1: '1 process',
+    mem_running: 'เปิดมา {t}',
+    mem_cpu: 'CPU {n}%',
+    mem_idle: 'ไม่ได้ทำงาน',
+    mem_empty: 'ไม่มีแอปที่ปิดได้ในตอนนี้',
+    dur_m: '{n} นาที',
+    dur_h: '{n} ชม.',
+    dur_d: '{n} วัน',
+    quit: 'ปิดแอป',
+    quitting: 'กำลังปิด…',
+    quit_title: 'ปิด {name}?',
+    quit_text: 'แอปจะปิดแบบปกติ เหมือนกด Quit เอง ถ้ามีงานที่ยังไม่บันทึก แอปจะถามก่อน',
+    quit_frees: 'จะได้แรมคืนประมาณ {size}',
+    quit_done: 'ปิด {name} แล้ว ได้แรมคืน {size}',
+    quit_pending: '{name} ยังเปิดอยู่ อาจกำลังถามให้บันทึกงาน ลองดูที่หน้าต่างของแอป',
     theme_dark: 'เปลี่ยนเป็นโหมดมืด',
     theme_light: 'เปลี่ยนเป็นโหมดสว่าง',
     rescan: 'สแกนใหม่',
@@ -151,6 +190,43 @@ const I18N = {
   },
   en: {
     tagline: 'See where your space went, and get it back safely',
+    tab_disk: 'Disk',
+    tab_mem: 'Memory',
+    mem_used: 'RAM in use',
+    mem_of: 'of {total}',
+    mem_pressure: 'Memory pressure',
+    p_normal: 'Normal',
+    p_warn: 'Getting tight',
+    p_critical: 'Critical',
+    p_normal_d: 'Plenty of RAM; quitting apps will not speed things up.',
+    p_warn_d: 'Swap is being used; quitting unused apps will help.',
+    p_critical_d: 'Out of RAM; the Mac will lag. Quit apps you are not using.',
+    mem_swap: 'Swap (RAM on disk)',
+    mem_swap_note: 'A lot means RAM ran short recently',
+    mem_quittable: 'Apps you can quit',
+    mem_quittable_note: 'RAM held by open apps',
+    n_apps: '{n} apps',
+    mem_apps: 'Open apps',
+    mem_apps_sub: 'Sorted by RAM. Quit the ones you are not using; an app with unsaved work asks first.',
+    mem_live: 'Live',
+    mem_background: 'Background & system',
+    mem_background_note: 'System parts and background programs. Puri Cleaner does not quit these, since that can break the system or other apps.',
+    mem_procs: '{n} processes',
+    mem_proc1: '1 process',
+    mem_running: 'open {t}',
+    mem_cpu: 'CPU {n}%',
+    mem_idle: 'Idle',
+    mem_empty: 'No apps to quit right now.',
+    dur_m: '{n} min',
+    dur_h: '{n} h',
+    dur_d: '{n} days',
+    quit: 'Quit',
+    quitting: 'Quitting…',
+    quit_title: 'Quit {name}?',
+    quit_text: 'The app quits normally, just like choosing Quit. If it has unsaved work, it asks first.',
+    quit_frees: 'Frees about {size} of RAM',
+    quit_done: 'Quit {name} — {size} of RAM freed',
+    quit_pending: '{name} is still open; it may be asking to save. Check its window.',
     theme_dark: 'Switch to dark mode',
     theme_light: 'Switch to light mode',
     rescan: 'Rescan',
@@ -399,6 +475,12 @@ const ICON = {
 /* ─── State ───────────────────────────────────────────────────── */
 
 const S = {
+  // "#tab=mem" in the link opens the memory page directly.
+  tab: (HASH.get('tab') || keep('puri-tab')) === 'mem' ? 'mem' : 'disk',
+  scanVisible: true,
+  mem: null,
+  memTimer: null,
+  quitting: null,
   overview: null,
   node: null,
   recs: [],
@@ -432,9 +514,145 @@ function selectionTotals() {
 /* ─── Scan ────────────────────────────────────────────────────── */
 
 function showScanScreen(on) {
-  $('#scanScreen').hidden = !on;
-  $('#app').hidden = on;
-  $('#rescanBtn').hidden = on;
+  S.scanVisible = on;
+  applyTab();
+}
+
+/* ─── Tabs: disk / memory ─────────────────────────────────────── */
+
+function applyTab() {
+  const mem = S.tab === 'mem';
+  $('#memView').hidden = !mem;
+  $('#scanScreen').hidden = mem || !S.scanVisible;
+  $('#app').hidden = mem || !!S.scanVisible;
+  $('#rescanBtn').hidden = mem || !!S.scanVisible;
+  $$('#tabSeg button').forEach(b => {
+    b.classList.toggle('on', b.dataset.tab === S.tab);
+    b.setAttribute('aria-selected', b.dataset.tab === S.tab);
+  });
+  if (mem) startMem(); else stopMem();
+  if (!mem && S.node) requestAnimationFrame(() => renderTreemap());
+}
+
+/* ─── Memory ──────────────────────────────────────────────────── */
+
+const AVATAR = ['#6c5ce7', '#e04f8c', '#1aa3b5', '#4a7ee8', '#e8762d', '#2fa36b', '#9a6bd8', '#d6455d'];
+
+function avatarColor(name) {
+  let h = 0;
+  for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0;
+  return AVATAR[h % AVATAR.length];
+}
+
+function duration(sec) {
+  if (sec < 3600) return t('dur_m', { n: Math.max(1, Math.round(sec / 60)) });
+  if (sec < 86400 * 2) return t('dur_h', { n: Math.round(sec / 3600) });
+  return t('dur_d', { n: Math.round(sec / 86400) });
+}
+
+async function loadMem() {
+  try {
+    S.mem = await api('memory');
+    renderMem();
+  } catch (e) {
+    $('#memApps').innerHTML = `<div class="mem-empty">${esc(t('err_generic', { msg: e.message }))}</div>`;
+  }
+}
+
+function startMem() {
+  if (S.memTimer) return;
+  loadMem();
+  S.memTimer = setInterval(() => {
+    if (document.hidden || !$('#modal').hidden || S.quitting) return;
+    loadMem();
+  }, 4000);
+}
+
+function stopMem() {
+  clearInterval(S.memTimer);
+  S.memTimer = null;
+}
+
+function memRow(a, max) {
+  const row = el('div', 'mem-row');
+  const idle = a.cpu < 0.5 && a.running_for > 3600;
+  const meta = [a.processes === 1 ? t('mem_proc1') : t('mem_procs', { n: num(a.processes) })];
+  if (a.running_for) meta.push(t('mem_running', { t: duration(a.running_for) }));
+  meta.push(t('mem_cpu', { n: a.cpu < 10 ? a.cpu.toFixed(1) : Math.round(a.cpu) }));
+  const pct = max ? Math.max(2, 100 * a.memory / max) : 0;
+  row.innerHTML = `
+    <div class="mem-avatar" style="background:${avatarColor(a.name)}">${esc((a.name.trim()[0] || '?').toUpperCase())}</div>
+    <div style="min-width:0">
+      <div class="mem-name" title="${esc(a.path || a.name)}">${esc(a.name)}${idle && a.can_quit ? `<span class="mem-tag idle">${esc(t('mem_idle'))}</span>` : ''}</div>
+      <div class="mem-meta">${esc(meta.join(' · '))}</div>
+    </div>
+    <div class="mem-bar"><i style="width:${pct}%"></i></div>
+    <div class="mem-size">${fmt(a.memory)}</div>
+    ${a.can_quit ? `<button class="btn">${esc(t('quit'))}</button>` : '<div class="mem-lock">—</div>'}`;
+  const btn = $('button', row);
+  if (btn) btn.onclick = () => askQuit(a, row);
+  return row;
+}
+
+function renderMem() {
+  const m = S.mem;
+  if (!m) return;
+  const apps = m.apps.filter(a => a.can_quit);
+  const others = m.apps.filter(a => !a.can_quit);
+  const usedPct = m.total ? 100 * m.used / m.total : 0;
+  $('#memUsed').textContent = fmt(m.used);
+  $('#memTotal').textContent = t('mem_of', { total: fmt(m.total) });
+  const bar = $('#memBar');
+  bar.style.width = usedPct.toFixed(1) + '%';
+  bar.style.background = m.pressure === 'critical' ? 'var(--danger)' : m.pressure === 'warn' ? 'var(--review)' : 'var(--c-code-ac)';
+  const p = $('#memPressure');
+  p.className = 'pressure ' + m.pressure;
+  p.textContent = t('p_' + m.pressure);
+  $('#memPressureNote').textContent = t('p_' + m.pressure + '_d');
+  $('#memSwap').textContent = fmt(m.swap_used);
+  $('#memSwapTotal').textContent = m.swap_total ? t('mem_of', { total: fmt(m.swap_total) }) : '';
+  $('#memQuittable').textContent = fmt(apps.reduce((s, a) => s + a.memory, 0));
+  $('#memQuittableN').textContent = t('n_apps', { n: num(apps.length) });
+
+  const max = Math.max(1, ...m.apps.map(a => a.memory));
+  const list = $('#memApps');
+  list.innerHTML = '';
+  if (!apps.length) list.append(el('div', 'mem-empty', esc(t('mem_empty'))));
+  for (const a of apps) {
+    const row = memRow(a, max);
+    if (S.quitting === a.key) row.classList.add('quitting');
+    list.append(row);
+  }
+  const bg = $('#memBg');
+  bg.innerHTML = '';
+  for (const a of others.slice(0, 40)) bg.append(memRow(a, max));
+  $('#memBgTotal').textContent = fmt(others.reduce((s, a) => s + a.memory, 0));
+}
+
+function askQuit(a, row) {
+  openModal(`
+    <h3 class="modal-title" id="modalTitle">${esc(t('quit_title', { name: a.name }))}</h3>
+    <p class="modal-text">${esc(t('quit_text'))}</p>
+    <p class="modal-text"><b>${esc(t('quit_frees', { size: fmt(a.memory) }))}</b></p>
+    <div class="modal-actions">
+      <button class="btn" data-close data-autofocus>${esc(t('cancel'))}</button>
+      <button class="btn btn-primary" id="confirmQuit">${esc(t('quit'))}</button>
+    </div>`);
+  $('#confirmQuit').onclick = async () => {
+    closeModal();
+    S.quitting = a.key;
+    row.classList.add('quitting');
+    const b = $('button', row);
+    if (b) { b.disabled = true; b.textContent = t('quitting'); }
+    try {
+      const r = await api('quit_app', { key: a.key });
+      toast(r.closed ? t('quit_done', { name: a.name, size: fmt(r.freed) }) : t('quit_pending', { name: a.name }));
+    } catch (e) {
+      toast(t('err_generic', { msg: e.message }));
+    }
+    S.quitting = null;
+    loadMem();
+  };
 }
 
 async function startScan() {
@@ -1205,6 +1423,7 @@ function bind() {
     keep('puri-lang', lang);
     renderStatic();
     if (S.overview) renderAll();
+    if (S.mem) renderMem();
   });
   $$('#viewSeg button').forEach(b => b.onclick = () => {
     S.view = b.dataset.view;
@@ -1213,6 +1432,11 @@ function bind() {
     renderTreemap();
   });
   $('#rescanBtn').onclick = startScan;
+  $$('#tabSeg button').forEach(b => b.onclick = () => {
+    S.tab = b.dataset.tab;
+    keep('puri-tab', S.tab);
+    applyTab();
+  });
   $('#themeBtn').onclick = () => {
     const next = currentTheme() === 'dark' ? 'light' : 'dark';
     keep('puri-theme', next);
